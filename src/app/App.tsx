@@ -34,7 +34,7 @@ export interface RoomConfig {
 
 export interface FurnitureItem {
   id: string;
-  type: "chair" | "sofa" | "table" | "side-table";
+  type: "chair" | "sofa" | "table" | "side-table" | "bed" | "lamp" | "plant" | "rug";
   name: string;
   x: number;
   y: number;
@@ -136,8 +136,28 @@ export default function App() {
     toast.info("Action redone");
   };
 
+  const [cameraResetTrigger, setCameraResetTrigger] = useState(0);
+
   const handleSave = () => {
-    toast.success("Design saved successfully!");
+    try {
+      const projectToSave = { ...project, lastModified: new Date().toISOString() };
+      const stored = localStorage.getItem("furni_studio_projects");
+      const projects: Project[] = stored ? JSON.parse(stored) : [];
+
+      const existingIdx = projects.findIndex(p => p.id === projectToSave.id);
+      if (existingIdx >= 0) {
+        projects[existingIdx] = projectToSave;
+      } else {
+        projects.push(projectToSave);
+      }
+
+      localStorage.setItem("furni_studio_projects", JSON.stringify(projects));
+      setProject(projectToSave);
+
+      toast.success("Design saved successfully!");
+    } catch (err) {
+      toast.error("Failed to save design");
+    }
   };
 
   const handleScaleAllItems = useCallback((scaleFactor: number) => {
@@ -246,6 +266,7 @@ export default function App() {
               <SavedDesigns
                 onEdit={(proj) => {
                   setProject(proj);
+                  setHistory({ past: [], present: proj, future: [] });
                   setActiveTab("editor");
                 }}
               />
@@ -286,7 +307,7 @@ export default function App() {
                       updateProject={(newProject) => updateProject(newProject)}
                     />
                   ) : (
-                    <Visualization3D project={project} />
+                    <Visualization3D project={project} cameraResetTrigger={cameraResetTrigger} />
                   )}
                 </div>
 
@@ -298,6 +319,7 @@ export default function App() {
                     allItems={project.items}
                     lightingSettings={project.lightingSettings}
                     onScaleAllItems={handleScaleAllItems}
+                    onResetCamera={() => setCameraResetTrigger(prev => prev + 1)}
                     updateItem={(updatedItem) => {
                       const newItems = project.items.map(item => item.id === updatedItem.id ? updatedItem : item);
                       updateProject({ ...project, items: newItems });

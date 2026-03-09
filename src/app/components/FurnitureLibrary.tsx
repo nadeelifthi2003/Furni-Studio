@@ -2,30 +2,54 @@ import React from "react";
 import { Package, Search, Grid } from "lucide-react";
 
 const FURNITURE_TYPES = [
-  { 
-    id: "chair", 
-    name: "Classic Armchair", 
+  {
+    id: "chair",
+    name: "Classic Armchair",
     image: "https://images.unsplash.com/photo-1760236963218-424a715d1816?q=80&w=200",
     dimensions: { w: 80, l: 80 }
   },
-  { 
-    id: "sofa", 
-    name: "Modern 3-Seater", 
+  {
+    id: "sofa",
+    name: "Modern 3-Seater",
     image: "https://images.unsplash.com/photo-1606202598125-e2077bb5ebcc?q=80&w=200",
     dimensions: { w: 220, l: 95 }
   },
-  { 
-    id: "table", 
-    name: "Dining Table", 
+  {
+    id: "table",
+    name: "Dining Table",
     image: "https://images.unsplash.com/photo-1679309981674-cef0e23a7864?q=80&w=200",
     dimensions: { w: 160, l: 90 }
   },
-  { 
-    id: "side-table", 
-    name: "Marble Side Table", 
-    image: "https://images.unsplash.com/photo-1592078615290-033ee584e267?q=80&w=200", // Fallback if side table unsplash failed
+  {
+    id: "chair",
+    name: "Modern Accent Chair",
+    image: "https://images.unsplash.com/photo-1592078615290-033ee584e267?q=80&w=200",
     dimensions: { w: 50, l: 50 }
   },
+  {
+    id: "bed",
+    name: "Queen Size Bed",
+    image: "https://images.unsplash.com/photo-1505693314120-0d443867891c?q=80&w=200",
+    dimensions: { w: 160, l: 200 }
+  },
+  {
+    id: "lamp",
+    name: "Modern Floor Lamp",
+    image: "https://images.unsplash.com/photo-1507473885765-e6ed057f782c?q=80&w=200",
+    dimensions: { w: 40, l: 40 }
+  },
+  {
+    id: "plant",
+    name: "Potted Monstera",
+    image: "https://images.unsplash.com/photo-1485955900006-10f4d324d411?q=80&w=200",
+    dimensions: { w: 50, l: 50 }
+  },
+  {
+    id: "rug",
+    name: "Vintage Area Rug",
+    image: "https://images.unsplash.com/photo-1534889156217-d643df14f14a?q=80&w=200",
+    dimensions: { w: 200, l: 300 }
+  }
 ];
 
 export function FurnitureLibrary() {
@@ -43,9 +67,9 @@ export function FurnitureLibrary() {
 
       <div className="relative mb-4">
         <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-        <input 
-          type="text" 
-          placeholder="Search catalog..." 
+        <input
+          type="text"
+          placeholder="Search catalog..."
           className="w-full pl-9 pr-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none"
         />
       </div>
@@ -59,9 +83,9 @@ export function FurnitureLibrary() {
             className="group relative bg-white border border-gray-200 rounded-lg p-2 cursor-grab active:cursor-grabbing hover:border-blue-400 hover:shadow-sm transition-all"
           >
             <div className="aspect-square bg-gray-50 rounded mb-2 overflow-hidden flex items-center justify-center p-2">
-              <img 
-                src={item.image} 
-                alt={item.name} 
+              <img
+                src={item.image}
+                alt={item.name}
                 className="max-w-full max-h-full object-contain mix-blend-multiply group-hover:scale-110 transition-transform"
               />
             </div>

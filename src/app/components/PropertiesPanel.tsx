@@ -1,12 +1,12 @@
 import React, { useState } from "react";
 import { FurnitureItem, RoomConfig, LightingSettings, EnvironmentPreset } from "../App";
-import { 
-  Settings2, 
-  Trash2, 
-  Copy, 
-  RotateCw, 
-  Sun, 
-  Paintbrush, 
+import {
+  Settings2,
+  Trash2,
+  Copy,
+  RotateCw,
+  Sun,
+  Paintbrush,
   Maximize2,
   Minimize2,
   RefreshCw,
@@ -28,6 +28,7 @@ interface PropertiesPanelProps {
   onScaleAllItems: (scaleFactor: number) => void;
   lightingSettings: LightingSettings;
   updateLightingSettings: (settings: LightingSettings) => void;
+  onResetCamera: () => void;
 }
 
 // Environment Preset Configurations
@@ -54,19 +55,20 @@ const ENVIRONMENT_PRESETS: Record<EnvironmentPreset, Omit<LightingSettings, 'env
   },
 };
 
-export function PropertiesPanel({ 
-  selectedItem, 
-  roomConfig, 
-  updateItem, 
+export function PropertiesPanel({
+  selectedItem,
+  roomConfig,
+  updateItem,
   updateRoomConfig,
   onDelete,
   onDuplicate,
   allItems,
   onScaleAllItems,
   lightingSettings,
-  updateLightingSettings
+  updateLightingSettings,
+  onResetCamera
 }: PropertiesPanelProps) {
-  
+
   const handleItemUpdate = (newItem: FurnitureItem) => {
     updateItem(newItem);
   };
@@ -136,7 +138,7 @@ export function PropertiesPanel({
               <Expand size={14} className="text-gray-400" />
               Scale Design
             </label>
-            
+
             {/* Quick Scale Buttons */}
             <div className="grid grid-cols-3 gap-2 mb-4">
               {[
@@ -150,11 +152,10 @@ export function PropertiesPanel({
                 <button
                   key={scale.label}
                   onClick={() => handleScaleDesign(scale.value)}
-                  className={`px-3 py-2 text-[11px] font-bold border rounded-lg transition-all ${
-                    scale.value === 1.0
+                  className={`px-3 py-2 text-[11px] font-bold border rounded-lg transition-all ${scale.value === 1.0
                       ? "border-blue-600 bg-blue-50 text-blue-600"
                       : "border-gray-200 text-gray-600 hover:border-blue-400 hover:bg-blue-50"
-                  }`}
+                    }`}
                   title={`Scale all furniture to ${scale.label}`}
                 >
                   {scale.label}
@@ -190,9 +191,9 @@ export function PropertiesPanel({
                   <span>Ambient Intensity</span>
                   <span className="text-blue-600">{lightingSettings.ambientIntensity}%</span>
                 </div>
-                <input 
-                  type="range" 
-                  className="w-full h-1 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600" 
+                <input
+                  type="range"
+                  className="w-full h-1 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
                   value={lightingSettings.ambientIntensity}
                   onChange={(e) => updateLightingSettings({ ...lightingSettings, ambientIntensity: parseInt(e.target.value) })}
                 />
@@ -202,9 +203,9 @@ export function PropertiesPanel({
                   <span>Shadow Softness</span>
                   <span className="text-blue-600">{lightingSettings.shadowSoftness}%</span>
                 </div>
-                <input 
-                  type="range" 
-                  className="w-full h-1 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600" 
+                <input
+                  type="range"
+                  className="w-full h-1 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
                   value={lightingSettings.shadowSoftness}
                   onChange={(e) => updateLightingSettings({ ...lightingSettings, shadowSoftness: parseInt(e.target.value) })}
                 />
@@ -230,8 +231,8 @@ export function PropertiesPanel({
             </div>
           </div>
 
-          <button 
-            onClick={() => window.location.reload()}
+          <button
+            onClick={onResetCamera}
             className="w-full flex items-center justify-center gap-2 py-2.5 border border-gray-200 rounded-lg text-xs font-semibold text-gray-600 hover:bg-gray-50 transition-colors mt-8"
           >
             <RefreshCw size={14} />
@@ -275,24 +276,24 @@ export function PropertiesPanel({
                 <span>ROTATION</span>
                 <span>{selectedItem.rotation}°</span>
               </div>
-              <input 
-                type="range" 
-                min="0" 
-                max="360" 
+              <input
+                type="range"
+                min="0"
+                max="360"
                 step="45"
                 value={selectedItem.rotation}
                 onChange={(e) => updateItem({ ...selectedItem, rotation: parseInt(e.target.value) })}
-                className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600" 
+                className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
               />
             </div>
-            
+
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <div className="flex justify-between text-[11px] text-gray-600 mb-2 font-bold uppercase">
                   <span>Width</span>
                 </div>
-                <input 
-                  type="number" 
+                <input
+                  type="number"
                   value={selectedItem.width}
                   onChange={(e) => updateItem({ ...selectedItem, width: parseInt(e.target.value) })}
                   className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-xs font-bold focus:ring-1 focus:ring-blue-500 outline-none"
@@ -302,8 +303,8 @@ export function PropertiesPanel({
                 <div className="flex justify-between text-[11px] text-gray-600 mb-2 font-bold uppercase">
                   <span>Length</span>
                 </div>
-                <input 
-                  type="number" 
+                <input
+                  type="number"
                   value={selectedItem.length}
                   onChange={(e) => updateItem({ ...selectedItem, length: parseInt(e.target.value) })}
                   className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-xs font-bold focus:ring-1 focus:ring-blue-500 outline-none"
@@ -328,9 +329,8 @@ export function PropertiesPanel({
                       updateItem({ ...selectedItem, color });
                       toast.success(`Color updated to ${color}`);
                     }}
-                    className={`w-6 h-6 rounded-md border transition-all ${
-                      selectedItem.color === color ? "border-blue-600 scale-110" : "border-gray-200"
-                    }`}
+                    className={`w-6 h-6 rounded-md border transition-all ${selectedItem.color === color ? "border-blue-600 scale-110" : "border-gray-200"
+                      }`}
                     style={{ backgroundColor: color }}
                   />
                 ))}
@@ -342,21 +342,21 @@ export function PropertiesPanel({
                 <span>Glossiness</span>
                 <span>{selectedItem.shading * 100}%</span>
               </div>
-              <input 
-                type="range" 
-                min="0" 
-                max="1" 
+              <input
+                type="range"
+                min="0"
+                max="1"
                 step="0.1"
                 value={selectedItem.shading}
                 onChange={(e) => updateItem({ ...selectedItem, shading: parseFloat(e.target.value) })}
-                className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600" 
+                className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
               />
             </div>
           </div>
         </div>
 
         <div className="pt-8 border-t border-gray-100 grid grid-cols-2 gap-3">
-          <button 
+          <button
             onClick={() => {
               onDuplicate(selectedItem);
               toast.success("Object duplicated");
@@ -366,7 +366,7 @@ export function PropertiesPanel({
             <Copy size={14} />
             Duplicate
           </button>
-          <button 
+          <button
             onClick={() => {
               onDelete(selectedItem.id);
               toast.error("Object deleted");

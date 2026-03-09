@@ -16,6 +16,22 @@ export function Canvas2D({ project, selectedItemId, onSelectItem, updateProject 
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
 
+  // Add Keyboard Support for Deletion
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.key === "Delete" || e.key === "Backspace") && selectedItemId) {
+        updateProject({
+          ...project,
+          items: project.items.filter(item => item.id !== selectedItemId)
+        });
+        onSelectItem(null);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [project, selectedItemId, updateProject, onSelectItem]);
+
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     const furnitureData = e.dataTransfer.getData("furniture");
@@ -23,7 +39,7 @@ export function Canvas2D({ project, selectedItemId, onSelectItem, updateProject 
 
     const furniture = JSON.parse(furnitureData);
     const rect = containerRef.current.getBoundingClientRect();
-    
+
     // Calculate drop position relative to container
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
@@ -75,7 +91,7 @@ export function Canvas2D({ project, selectedItemId, onSelectItem, updateProject 
       if (item.id === selectedItemId) {
         const newX = e.clientX - dragOffset.x;
         const newY = e.clientY - dragOffset.y;
-        
+
         // Snap to grid
         return {
           ...item,
@@ -110,15 +126,20 @@ export function Canvas2D({ project, selectedItemId, onSelectItem, updateProject 
   };
 
   return (
-    <div 
+    <div
       className="w-full h-full relative overflow-auto bg-gray-100 flex items-center justify-center p-20 cursor-crosshair"
       onDragOver={handleDragOver}
       onDrop={handleDrop}
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
-      onClick={() => onSelectItem(null)}
+      onClick={(e) => {
+        // Only deselect if clicking the direct container, not the room or children
+        if (e.target === e.currentTarget) {
+          onSelectItem(null);
+        }
+      }}
     >
-      <div 
+      <div
         ref={containerRef}
         style={roomStyle}
         className="relative transition-all duration-300"
@@ -136,9 +157,8 @@ export function Canvas2D({ project, selectedItemId, onSelectItem, updateProject 
           <div
             key={item.id}
             onMouseDown={(e) => handleItemMouseDown(e, item)}
-            className={`absolute cursor-move transition-shadow ${
-              selectedItemId === item.id ? "ring-2 ring-blue-500 ring-offset-2 z-10 shadow-xl" : "hover:shadow-md"
-            }`}
+            className={`absolute cursor-move transition-shadow ${selectedItemId === item.id ? "ring-2 ring-blue-500 ring-offset-2 z-10 shadow-xl" : "hover:shadow-md"
+              }`}
             style={{
               left: `${item.x}px`,
               top: `${item.y}px`,
@@ -154,9 +174,9 @@ export function Canvas2D({ project, selectedItemId, onSelectItem, updateProject 
               padding: '4px'
             }}
           >
-            <img 
-              src={item.image} 
-              alt={item.name} 
+            <img
+              src={item.image}
+              alt={item.name}
               className="w-full h-full object-contain pointer-events-none mix-blend-multiply"
               style={{ filter: `drop-shadow(0 2px 4px rgba(0,0,0,0.1))` }}
             />
