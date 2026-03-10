@@ -10,6 +10,10 @@ import { PropertiesPanel } from "./components/PropertiesPanel";
 import { SavedDesigns } from "./components/SavedDesigns";
 import { SettingsPage } from "./components/SettingsPage";
 import { LandingPage } from "./components/LandingPage";
+import { AdminDashboard } from "./components/AdminDashboard";
+import { AdminUserManagement } from "./components/AdminUserManagement";
+import { AdminProjectManagement } from "./components/AdminProjectManagement";
+import { AdminStoreManagement } from "./components/AdminStoreManagement";
 import { Toaster, toast } from "sonner";
 import { motion, AnimatePresence } from "motion/react";
 
@@ -72,8 +76,8 @@ const INITIAL_ROOM_CONFIG: RoomConfig = {
 
 export default function App() {
   const [showLanding, setShowLanding] = useState(true);
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [activeTab, setActiveTab] = useState<"dashboard" | "editor" | "saved" | "settings">("dashboard");
+  const [currentUser, setCurrentUser] = useState<import('./types').User | null>(null);
+  const [activeTab, setActiveTab] = useState<string>("dashboard");
   const [viewMode, setViewMode] = useState<"2d" | "3d">("2d");
   const [project, setProject] = useState<Project>({
     id: "proj-1",
@@ -210,10 +214,16 @@ export default function App() {
     return <LandingPage onLoginClick={() => setShowLanding(false)} />;
   }
 
-  if (!isLoggedIn) {
+  if (!currentUser) {
     return (
       <>
-        <Login onLogin={() => setIsLoggedIn(true)} />
+        <Login 
+          onLogin={(user) => {
+            setCurrentUser(user);
+            setActiveTab(user.role === 'admin' ? 'admin-dashboard' : 'dashboard');
+          }} 
+          onBack={() => setShowLanding(true)}
+        />
         <Toaster position="top-right" />
       </>
     );
@@ -221,19 +231,21 @@ export default function App() {
 
   return (
     <div className="flex h-screen bg-gray-50 overflow-hidden font-sans text-gray-900">
-      <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} onLogout={() => setIsLoggedIn(false)} />
+      <Sidebar userRole={currentUser.role} activeTab={activeTab} setActiveTab={setActiveTab} onLogout={() => setCurrentUser(null)} />
 
       <div className="flex flex-col flex-1 overflow-hidden">
-        <TopNav
-          projectName={project.name}
-          viewMode={viewMode}
-          setViewMode={setViewMode}
-          onSave={handleSave}
-          onUndo={undo}
-          onRedo={redo}
-          canUndo={history.past.length > 0}
-          canRedo={history.future.length > 0}
-        />
+        {!activeTab.startsWith('admin-') && (
+          <TopNav
+            projectName={project.name}
+            viewMode={viewMode}
+            setViewMode={setViewMode}
+            onSave={handleSave}
+            onUndo={undo}
+            onRedo={redo}
+            canUndo={history.past.length > 0}
+            canRedo={history.future.length > 0}
+          />
+        )}
 
         <main className="flex-1 relative overflow-hidden">
           <AnimatePresence mode="wait">
@@ -271,6 +283,11 @@ export default function App() {
                 }}
               />
             )}
+
+            {activeTab === "admin-dashboard" && <AdminDashboard />}
+            {activeTab === "admin-users" && <AdminUserManagement />}
+            {activeTab === "admin-projects" && <AdminProjectManagement />}
+            {activeTab === "admin-stores" && <AdminStoreManagement />}
 
             {activeTab === "settings" && (
               <SettingsPage />

@@ -33,3 +33,11 @@ export interface AppState {
   history: FurnitureItem[][];
   historyIndex: number;
 }
+
+export type UserRole = 'designer' | 'admin';
+
+export interface User {
+  email: string;
+  role: UserRole;
+  name: string;
+}
