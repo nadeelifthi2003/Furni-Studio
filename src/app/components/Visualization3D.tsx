@@ -25,6 +25,7 @@ export function Visualization3D({ project, cameraResetTrigger }: Visualization3D
   const furnitureGroupRef = useRef<THREE.Group | null>(null);
   const ambientLightRef = useRef<THREE.AmbientLight | null>(null);
   const directionalLightRef = useRef<THREE.DirectionalLight | null>(null);
+  const buildRoomRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     if (!mountRef.current) return;
@@ -76,7 +77,6 @@ export function Visualization3D({ project, cameraResetTrigger }: Visualization3D
     scene.add(directionalLight);
     directionalLightRef.current = directionalLight;
 
-    // Add Room (Floor and Walls)
     const buildRoom = () => {
       // Clear existing room
       scene.children = scene.children.filter(child =>
@@ -128,6 +128,9 @@ export function Visualization3D({ project, cameraResetTrigger }: Visualization3D
     };
 
     buildRoom();
+    
+    // Store buildRoom function in a ref to be used by another useEffect
+    buildRoomRef.current = buildRoom;
 
     // Furniture Group
     const furnitureGroup = new THREE.Group();
@@ -177,6 +180,13 @@ export function Visualization3D({ project, cameraResetTrigger }: Visualization3D
     };
   }, []);
 
+  // Update room when dimensions change
+  useEffect(() => {
+    if (buildRoomRef.current) {
+        buildRoomRef.current();
+    }
+  }, [project.roomConfig.width, project.roomConfig.length, project.roomConfig.height, project.roomConfig.wallColor]);
+
   // Update furniture items when project changes
   useEffect(() => {
     if (!furnitureGroupRef.current) return;
@@ -204,18 +214,21 @@ export function Visualization3D({ project, cameraResetTrigger }: Visualization3D
       const group = new THREE.Group();
       let mainMesh: THREE.Mesh | null = null;
 
-      // Procedurally generate specific geometries based on `item.type`
       if (item.type === 'chair') {
-        // Chair: 4 Cylinder Legs + Flat Square Seat + Curved/Straight Back
-        const legGeo = new THREE.CylinderGeometry(1.5, 1, item.length / 2, 8);
-        const seatGeo = new THREE.BoxGeometry(item.width, 3, item.length);
-        const backGeo = new THREE.BoxGeometry(item.width, item.length / 1.5, 4);
-
+        // Chair: Tapered legs, rounded seat, curved backrest
+        const legGeo = new THREE.CylinderGeometry(1.2, 0.8, item.length / 2, 12);
+        const seatGeo = new THREE.BoxGeometry(item.width, 4, item.length);
+        const backGeo = new THREE.BoxGeometry(item.width, item.length / 1.5, 3);
+        
+        // Add minimal bevels or keep simple boxes but positioned nicely
         const seat = new THREE.Mesh(seatGeo, material);
         seat.position.y = item.length / 2;
 
         const back = new THREE.Mesh(backGeo, material);
-        back.position.set(0, item.length / 2 + item.length / 3, -item.length / 2 + 2);
+        back.position.set(0, item.length / 2 + item.length / 3, -item.length / 2 + 1.5);
+
+        // Angle the back slightly for comfort look
+        back.rotation.x = -0.1;
 
         const legs = [
           [-item.width / 2 + 3, -item.length / 2 + 3],
@@ -241,21 +254,28 @@ export function Visualization3D({ project, cameraResetTrigger }: Visualization3D
         group.add(back);
 
       } else if (item.type === 'table') {
-        // Dining Table: Thick flat Box base + 4 thick legs
-        const topGeo = new THREE.BoxGeometry(item.width, 4, item.length);
-        const legGeo = new THREE.CylinderGeometry(2, 2, item.length / 1.5, 12);
+        // Dining Table: Thinner flat Box base + 4 thinner tapered legs
+        const topGeo = new THREE.CylinderGeometry(item.width / 2, item.width / 2, 3, 32); 
+        // Or if rectangle: BoxGeometry(item.width, 3, item.length);
+        // Let's use a Box with slightly rounded appearance or just a precise box
+        const topRectGeo = new THREE.BoxGeometry(item.width, 3, item.length);
+        const legGeo = new THREE.CylinderGeometry(1.5, 1, item.length / 1.5, 16);
 
-        const top = new THREE.Mesh(topGeo, material);
-        // Elevate tabletop
+        // Choose shape based on proportions (if it's perfectly square, maybe make it round, else rectangular)
+        const isRound = Math.abs(item.width - item.length) < 5;
+        const top = new THREE.Mesh(isRound ? topGeo : topRectGeo, material);
+        
         const tableHeight = item.length / 1.5;
         top.position.y = tableHeight;
 
-        // Four legs
+        // Four legs for rectangular, maybe center pedestal for round? Let's stick to 4 for now
+        const insetX = isRound ? item.width / 3 : item.width / 2 - 8;
+        const insetZ = isRound ? item.length / 3 : item.length / 2 - 8;
         const legs = [
-          [-item.width / 2 + 5, -item.length / 2 + 5],
-          [item.width / 2 - 5, -item.length / 2 + 5],
-          [-item.width / 2 + 5, item.length / 2 - 5],
-          [item.width / 2 - 5, item.length / 2 - 5],
+          [-insetX, -insetZ],
+          [insetX, -insetZ],
+          [-insetX, insetZ],
+          [insetX, insetZ],
         ];
 
         legs.forEach(pos => {
@@ -271,10 +291,10 @@ export function Visualization3D({ project, cameraResetTrigger }: Visualization3D
         group.add(top);
 
       } else if (item.type === 'side-table') {
-        // Marble Side Table: Circular/Square top + centralized cylinder stand + circular base plate
-        const topGeo = new THREE.CylinderGeometry(item.width / 2, item.width / 2, 2, 32);
-        const standGeo = new THREE.CylinderGeometry(1.5, 2, item.length, 16);
-        const baseGeo = new THREE.CylinderGeometry(item.width / 3, item.width / 3, 1, 32);
+        // Marble/Modern Side Table: Thin Circular top + elegant stand + base
+        const topGeo = new THREE.CylinderGeometry(item.width / 2, item.width / 2, 1.5, 32);
+        const standGeo = new THREE.CylinderGeometry(0.8, 1.2, item.length, 16);
+        const baseGeo = new THREE.CylinderGeometry(item.width / 2.5, item.width / 2.5, 1, 32);
 
         const top = new THREE.Mesh(topGeo, material);
         const stand = new THREE.Mesh(standGeo, material);
@@ -291,20 +311,46 @@ export function Visualization3D({ project, cameraResetTrigger }: Visualization3D
         });
 
       } else if (item.type === 'sofa') {
-        // Sofa: Large base block + 2 side armrests + 1 large back block
-        const seatGeo = new THREE.BoxGeometry(item.width, item.length / 3, item.length - 10);
-        const armGeo = new THREE.BoxGeometry(15, item.length / 1.8, item.length);
-        const backGeo = new THREE.BoxGeometry(item.width, item.length / 1.5, 15);
+        // Sofa: Rounded cushions for a softer look
+        const seatGeo = new THREE.BoxGeometry(item.width - 20, item.length / 4, item.length - 15);
+        const armGeo = new THREE.BoxGeometry(10, item.length / 1.8, item.length - 5);
+        const backGeo = new THREE.BoxGeometry(item.width, item.length / 1.6, 15);
+        
+        // Use a slightly rougher fabric material specifically for the sofa
+        const fabricMaterial = new THREE.MeshStandardMaterial({ 
+          color: item.color, 
+          roughness: 0.9, 
+          metalness: 0.1 
+        });
 
-        const seat = new THREE.Mesh(seatGeo, material);
-        const leftArm = new THREE.Mesh(armGeo, material);
-        const rightArm = new THREE.Mesh(armGeo, material);
-        const back = new THREE.Mesh(backGeo, material);
+        const seat = new THREE.Mesh(seatGeo, fabricMaterial);
+        const leftArm = new THREE.Mesh(armGeo, fabricMaterial);
+        const rightArm = new THREE.Mesh(armGeo, fabricMaterial);
+        const back = new THREE.Mesh(backGeo, fabricMaterial);
 
-        seat.position.set(0, item.length / 6, 5);
-        leftArm.position.set(-item.width / 2 + 7.5, item.length / 3.6, 0);
-        rightArm.position.set(item.width / 2 - 7.5, item.length / 3.6, 0);
-        back.position.set(0, item.length / 3, -item.length / 2 + 7.5);
+        // Little feet
+        const legGeo = new THREE.CylinderGeometry(1.5, 1, 5, 8);
+        const footMat = new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.8 });
+        const feetPositions = [
+          [-item.width / 2 + 8, -item.length / 2 + 8],
+          [item.width / 2 - 8, -item.length / 2 + 8],
+          [-item.width / 2 + 8, item.length / 2 - 8],
+          [item.width / 2 - 8, item.length / 2 - 8]
+        ];
+
+        feetPositions.forEach(pos => {
+          const foot = new THREE.Mesh(legGeo, footMat);
+          foot.position.set(pos[0], 2.5, pos[1]);
+          group.add(foot);
+        });
+
+        seat.position.set(0, 5 + item.length / 8, 2.5);
+        leftArm.position.set(-item.width / 2 + 5, 5 + item.length / 3.6, -2.5);
+        rightArm.position.set(item.width / 2 - 5, 5 + item.length / 3.6, -2.5);
+        back.position.set(0, 5 + item.length / 3.2, -item.length / 2 + 7.5);
+
+        // Angled backrest
+        back.rotation.x = -0.05;
 
         [seat, leftArm, rightArm, back].forEach(mesh => {
           mesh.castShadow = true;
@@ -313,22 +359,45 @@ export function Visualization3D({ project, cameraResetTrigger }: Visualization3D
         });
 
       } else if (item.type === 'bed') {
-        const frameGeo = new THREE.BoxGeometry(item.width, 10, item.length);
-        const mattressGeo = new THREE.BoxGeometry(item.width - 10, 20, item.length - 10);
-        const headboardGeo = new THREE.BoxGeometry(item.width, 50, 10);
-        const pillowGeo = new THREE.BoxGeometry(item.width / 2.5, 5, 20);
+        // Bed: Add legs to the frame, softer pillows
+        const frameGeo = new THREE.BoxGeometry(item.width, 8, item.length);
+        const mattressGeo = new THREE.BoxGeometry(item.width - 6, 18, item.length - 6);
+        const headboardGeo = new THREE.BoxGeometry(item.width, 45, 8);
+        const pillowGeo = new THREE.CapsuleGeometry(8, item.width / 3 - 8, 8, 16); 
+        const legGeo = new THREE.CylinderGeometry(2, 1.5, 10, 8);
 
         const frame = new THREE.Mesh(frameGeo, material);
-        const mattress = new THREE.Mesh(mattressGeo, new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.9 }));
+        const mattress = new THREE.Mesh(mattressGeo, new THREE.MeshStandardMaterial({ color: 0xfcfcfc, roughness: 0.9 }));
         const headboard = new THREE.Mesh(headboardGeo, material);
-        const pillow1 = new THREE.Mesh(pillowGeo, new THREE.MeshStandardMaterial({ color: 0xeeeeee }));
-        const pillow2 = new THREE.Mesh(pillowGeo, new THREE.MeshStandardMaterial({ color: 0xeeeeee }));
+        
+        const pillowMat = new THREE.MeshStandardMaterial({ color: 0xf4f4f4, roughness: 1.0 });
+        const pillow1 = new THREE.Mesh(pillowGeo, pillowMat);
+        const pillow2 = new THREE.Mesh(pillowGeo, pillowMat);
 
-        frame.position.y = 5;
-        mattress.position.y = 20;
-        headboard.position.set(0, 25, -item.length / 2 + 5);
-        pillow1.position.set(-item.width / 4, 32, -item.length / 2 + 25);
-        pillow2.position.set(item.width / 4, 32, -item.length / 2 + 25);
+        // Add 4 legs
+        const feetPositions = [
+          [-item.width / 2 + 5, -item.length / 2 + 5],
+          [item.width / 2 - 5, -item.length / 2 + 5],
+          [-item.width / 2 + 5, item.length / 2 - 5],
+          [item.width / 2 - 5, item.length / 2 - 5]
+        ];
+        
+        feetPositions.forEach(pos => {
+          const leg = new THREE.Mesh(legGeo, material);
+          leg.position.set(pos[0], 5, pos[1]);
+          leg.castShadow = true;
+          group.add(leg);
+        });
+
+        frame.position.y = 10;
+        mattress.position.y = 23;
+        headboard.position.set(0, 30, -item.length / 2 + 4);
+        
+        // Pillows rotated to lay flat
+        pillow1.rotation.z = Math.PI / 2;
+        pillow2.rotation.z = Math.PI / 2;
+        pillow1.position.set(-item.width / 4, 34, -item.length / 2 + 25);
+        pillow2.position.set(item.width / 4, 34, -item.length / 2 + 25);
 
         [frame, mattress, headboard, pillow1, pillow2].forEach(mesh => {
           mesh.castShadow = true;
@@ -338,12 +407,17 @@ export function Visualization3D({ project, cameraResetTrigger }: Visualization3D
 
       } else if (item.type === 'lamp') {
         const baseGeo = new THREE.CylinderGeometry(15, 15, 2, 32);
-        const poleGeo = new THREE.CylinderGeometry(2, 2, item.length, 16);
-        const shadeGeo = new THREE.CylinderGeometry(12, 20, 30, 32);
+        const poleGeo = new THREE.CylinderGeometry(1.5, 2, item.length, 16);
+        // Tapered shade: Top radius 10, bottom radius 18
+        const shadeGeo = new THREE.CylinderGeometry(10, 18, 25, 32);
 
         const base = new THREE.Mesh(baseGeo, material);
         const pole = new THREE.Mesh(poleGeo, material);
-        const shade = new THREE.Mesh(shadeGeo, new THREE.MeshStandardMaterial({ color: 0xfffee0, emissive: 0x333322 }));
+        const shade = new THREE.Mesh(shadeGeo, new THREE.MeshStandardMaterial({ 
+          color: 0xfffcf0, 
+          emissive: 0x444433,
+          roughness: 0.4
+        }));
 
         base.position.y = 1;
         pole.position.y = item.length / 2;
@@ -356,35 +430,48 @@ export function Visualization3D({ project, cameraResetTrigger }: Visualization3D
         });
 
         // Add a point light to the lamp
-        const pointLight = new THREE.PointLight(0xffddaa, 1, 300);
-        pointLight.position.y = item.length - 15;
+        const pointLight = new THREE.PointLight(0xffeedd, 1.2, 250);
+        pointLight.position.y = item.length - 20;
         pointLight.castShadow = true;
         group.add(pointLight);
 
       } else if (item.type === 'plant') {
-        const potGeo = new THREE.CylinderGeometry(12, 8, 30, 32);
-        const dirtGeo = new THREE.CylinderGeometry(11, 11, 2, 32);
+        const potGeo = new THREE.CylinderGeometry(14, 10, 32, 32);
+        const dirtGeo = new THREE.CylinderGeometry(13, 13, 2, 32);
         const pot = new THREE.Mesh(potGeo, material);
-        const dirt = new THREE.Mesh(dirtGeo, new THREE.MeshStandardMaterial({ color: 0x3b2f2f })); // brown dirt
+        const dirt = new THREE.Mesh(dirtGeo, new THREE.MeshStandardMaterial({ color: 0x2b1e19 })); // rich brown dirt
 
-        pot.position.y = 15;
-        dirt.position.y = 29;
+        pot.position.y = 16;
+        dirt.position.y = 31;
 
         group.add(pot);
         group.add(dirt);
         pot.castShadow = true;
         pot.receiveShadow = true;
 
-        // Add leaves (spheres/cones)
-        const leafMaterial = new THREE.MeshStandardMaterial({ color: 0x2d5a27, roughness: 0.6 });
-        for (let i = 0; i < 5; i++) {
-          const leafGeo = new THREE.SphereGeometry(10 + Math.random() * 5, 16, 16);
+        // Add leaves (capsules simulating large fronds)
+        const leafMaterial = new THREE.MeshStandardMaterial({ color: 0x3d7a33, roughness: 0.5 });
+        for (let i = 0; i < 8; i++) {
+          const leafScale = 8 + Math.random() * 6;
+          // Thin flat capsules for leaves
+          const leafGeo = new THREE.CapsuleGeometry(2, leafScale, 4, 8);
           const leaf = new THREE.Mesh(leafGeo, leafMaterial);
+          
+          // Spread them out from center
+          const angle = (i / 8) * Math.PI * 2 + (Math.random() - 0.5);
+          const radius = 5 + Math.random() * 8;
+          
           leaf.position.set(
-            (Math.random() - 0.5) * 20,
-            35 + Math.random() * 20,
-            (Math.random() - 0.5) * 20
+            Math.cos(angle) * radius,
+            35 + Math.random() * 15,
+            Math.sin(angle) * radius
           );
+          
+          // Bend leaves outwards
+          leaf.rotation.x = Math.random() * 0.5;
+          leaf.rotation.z = Math.random() * 0.5;
+          leaf.rotation.y = angle; // Point outwards
+
           leaf.castShadow = true;
           leaf.receiveShadow = true;
           group.add(leaf);

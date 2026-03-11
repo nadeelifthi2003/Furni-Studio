@@ -1,7 +1,7 @@
 import React from "react";
 import { Package, Search, Grid } from "lucide-react";
 
-const FURNITURE_TYPES = [
+export const FURNITURE_TYPES = [
   {
     id: "chair",
     name: "Classic Armchair",

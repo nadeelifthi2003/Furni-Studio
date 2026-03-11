@@ -294,8 +294,11 @@ export function PropertiesPanel({
                 </div>
                 <input
                   type="number"
-                  value={selectedItem.width}
-                  onChange={(e) => updateItem({ ...selectedItem, width: parseInt(e.target.value) })}
+                  value={selectedItem.width || ""}
+                  onChange={(e) => {
+                    const val = parseInt(e.target.value);
+                    updateItem({ ...selectedItem, width: isNaN(val) ? 0 : val });
+                  }}
                   className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-xs font-bold focus:ring-1 focus:ring-blue-500 outline-none"
                 />
               </div>
@@ -305,8 +308,11 @@ export function PropertiesPanel({
                 </div>
                 <input
                   type="number"
-                  value={selectedItem.length}
-                  onChange={(e) => updateItem({ ...selectedItem, length: parseInt(e.target.value) })}
+                  value={selectedItem.length || ""}
+                  onChange={(e) => {
+                    const val = parseInt(e.target.value);
+                    updateItem({ ...selectedItem, length: isNaN(val) ? 0 : val });
+                  }}
                   className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-xs font-bold focus:ring-1 focus:ring-blue-500 outline-none"
                 />
               </div>

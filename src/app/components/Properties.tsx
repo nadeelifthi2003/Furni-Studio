@@ -67,8 +67,11 @@ export const Properties: React.FC<PropertiesProps> = ({
                   step="0.1"
                   min="0.1"
                   max="10"
-                  value={selectedItem.width}
-                  onChange={(e) => onUpdateItem({ width: parseFloat(e.target.value) })}
+                  value={selectedItem.width || ""}
+                  onChange={(e) => {
+                    const val = parseFloat(e.target.value);
+                    onUpdateItem({ width: isNaN(val) ? 0 : val });
+                  }}
                   className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm"
                 />
               </div>
@@ -79,8 +82,11 @@ export const Properties: React.FC<PropertiesProps> = ({
                   step="0.1"
                   min="0.1"
                   max="10"
-                  value={selectedItem.depth}
-                  onChange={(e) => onUpdateItem({ depth: parseFloat(e.target.value) })}
+                  value={selectedItem.depth || ""}
+                  onChange={(e) => {
+                    const val = parseFloat(e.target.value);
+                    onUpdateItem({ depth: isNaN(val) ? 0 : val });
+                  }}
                   className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm"
                 />
               </div>
@@ -89,8 +95,11 @@ export const Properties: React.FC<PropertiesProps> = ({
                 <input 
                   type="number"
                   step="15"
-                  value={selectedItem.rotation}
-                  onChange={(e) => onUpdateItem({ rotation: parseInt(e.target.value) })}
+                  value={selectedItem.rotation || ""}
+                  onChange={(e) => {
+                    const val = parseInt(e.target.value);
+                    onUpdateItem({ rotation: isNaN(val) ? 0 : val });
+                  }}
                   className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm"
                 />
               </div>
@@ -122,8 +131,11 @@ export const Properties: React.FC<PropertiesProps> = ({
                 <input 
                   type="number"
                   step="0.1"
-                  value={selectedItem.x.toFixed(2)}
-                  onChange={(e) => onUpdateItem({ x: parseFloat(e.target.value) })}
+                  value={selectedItem.x || ""}
+                  onChange={(e) => {
+                    const val = parseFloat(e.target.value);
+                    onUpdateItem({ x: isNaN(val) ? 0 : val });
+                  }}
                   className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm"
                 />
               </div>
@@ -132,8 +144,11 @@ export const Properties: React.FC<PropertiesProps> = ({
                 <input 
                   type="number"
                   step="0.1"
-                  value={selectedItem.z.toFixed(2)}
-                  onChange={(e) => onUpdateItem({ z: parseFloat(e.target.value) })}
+                  value={selectedItem.z || ""}
+                  onChange={(e) => {
+                    const val = parseFloat(e.target.value);
+                    onUpdateItem({ z: isNaN(val) ? 0 : val });
+                  }}
                   className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm"
                 />
               </div>
@@ -151,8 +166,11 @@ export const Properties: React.FC<PropertiesProps> = ({
                   type="number"
                   min="2"
                   max="20"
-                  value={room.width}
-                  onChange={(e) => onUpdateRoom({ width: parseFloat(e.target.value) })}
+                  value={room.width || ""}
+                  onChange={(e) => {
+                    const val = parseFloat(e.target.value);
+                    onUpdateRoom({ width: isNaN(val) ? 2 : val });
+                  }}
                   className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm"
                 />
                 {room.width > 20 && <p className="text-[10px] text-red-500 flex items-center gap-1"><AlertCircle className="w-3 h-3" /> Max width 20m</p>}
@@ -163,8 +181,11 @@ export const Properties: React.FC<PropertiesProps> = ({
                   type="number"
                   min="2"
                   max="20"
-                  value={room.depth}
-                  onChange={(e) => onUpdateRoom({ depth: parseFloat(e.target.value) })}
+                  value={room.depth || ""}
+                  onChange={(e) => {
+                    const val = parseFloat(e.target.value);
+                    onUpdateRoom({ depth: isNaN(val) ? 2 : val });
+                  }}
                   className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm"
                 />
                 {room.depth > 20 && <p className="text-[10px] text-red-500 flex items-center gap-1"><AlertCircle className="w-3 h-3" /> Max depth 20m</p>}
