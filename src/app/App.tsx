@@ -234,7 +234,7 @@ export default function App() {
       <Sidebar userRole={currentUser.role} activeTab={activeTab} setActiveTab={setActiveTab} onLogout={() => setCurrentUser(null)} />
 
       <div className="flex flex-col flex-1 overflow-hidden">
-        {!activeTab.startsWith('admin-') && (
+        {!activeTab.startsWith('admin-') && activeTab !== 'settings' && (
           <TopNav
             projectName={project.name}
             viewMode={viewMode}

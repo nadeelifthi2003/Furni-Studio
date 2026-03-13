@@ -268,7 +268,13 @@ export function LandingPage({ onLoginClick }: LandingPageProps) {
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-12">
                         <div className="md:col-span-1">
                             <div className="flex items-center gap-3 mb-6">
-                                <img src="/logo.png" alt="FurniStudio Logo" className="w-8 h-8 rounded-lg" />
+                                <div className="w-9 h-9 rounded-lg bg-blue-600 flex items-center justify-center flex-shrink-0">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                                        <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+                                        <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
+                                        <line x1="12" y1="22.08" x2="12" y2="12" />
+                                    </svg>
+                                </div>
                                 <span className="text-2xl font-bold tracking-tight text-white">FurniStudio</span>
                             </div>
                             <p className="text-gray-400 text-sm leading-relaxed mb-6">
