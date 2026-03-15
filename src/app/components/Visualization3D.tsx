@@ -193,13 +193,19 @@ export function Visualization3D({ project, cameraResetTrigger }: Visualization3D
 
     // Clear existing furniture
     while (furnitureGroupRef.current.children.length > 0) {
-      const obj = furnitureGroupRef.current.children[0] as THREE.Mesh;
-      obj.geometry.dispose();
-      if (Array.isArray(obj.material)) {
-        obj.material.forEach(mat => mat.dispose());
-      } else {
-        obj.material.dispose();
-      }
+      const obj = furnitureGroupRef.current.children[0];
+      obj.traverse((child) => {
+        if (child instanceof THREE.Mesh) {
+          if (child.geometry) child.geometry.dispose();
+          if (child.material) {
+            if (Array.isArray(child.material)) {
+              child.material.forEach(mat => mat.dispose());
+            } else {
+              child.material.dispose();
+            }
+          }
+        }
+      });
       furnitureGroupRef.current.remove(obj);
     }
 
