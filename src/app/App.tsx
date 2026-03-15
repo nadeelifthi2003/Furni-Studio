@@ -14,6 +14,7 @@ import { AdminDashboard } from "./components/AdminDashboard";
 import { AdminUserManagement } from "./components/AdminUserManagement";
 import { AdminProjectManagement } from "./components/AdminProjectManagement";
 import { AdminStoreManagement } from "./components/AdminStoreManagement";
+import { AdminFurnitureManagement } from "./components/AdminFurnitureManagement";
 import { Toaster, toast } from "sonner";
 import { motion, AnimatePresence } from "motion/react";
 
@@ -288,6 +289,7 @@ export default function App() {
             {activeTab === "admin-users" && <AdminUserManagement />}
             {activeTab === "admin-projects" && <AdminProjectManagement />}
             {activeTab === "admin-stores" && <AdminStoreManagement />}
+            {activeTab === "admin-furniture" && <AdminFurnitureManagement />}
 
             {activeTab === "settings" && (
               <SettingsPage />
