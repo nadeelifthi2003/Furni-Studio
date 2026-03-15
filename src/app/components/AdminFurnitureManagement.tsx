@@ -44,6 +44,7 @@ export function AdminFurnitureManagement() {
     const [searchQuery, setSearchQuery] = useState('');
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const [editingItem, setEditingItem] = useState<FurnitureCatalogItem | null>(null);
+    const [itemToDelete, setItemToDelete] = useState<string | null>(null);
 
     const filteredItems = furnitureItems.filter(item =>
         item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -51,9 +52,14 @@ export function AdminFurnitureManagement() {
     );
 
     const handleDelete = (id: string) => {
-        if (window.confirm('Are you sure you want to remove this furniture item?')) {
-            setFurnitureItems(furnitureItems.filter(item => item.id !== id));
+        setItemToDelete(id);
+    };
+
+    const confirmDelete = () => {
+        if (itemToDelete) {
+            setFurnitureItems(furnitureItems.filter(item => item.id !== itemToDelete));
             toast.success('Furniture item removed successfully');
+            setItemToDelete(null);
         }
     };
 
@@ -311,6 +317,42 @@ export function AdminFurnitureManagement() {
                     </motion.div>
                 </div>
             )}
+
+            {/* Delete Confirmation Modal */}
+            {itemToDelete && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                    <motion.div 
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        className="bg-white rounded-xl shadow-xl w-full max-w-sm overflow-hidden"
+                    >
+                        <div className="p-6 text-center">
+                            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4 text-red-600">
+                                <Trash2 size={32} />
+                            </div>
+                            <h2 className="text-xl font-bold text-gray-900 mb-2">Delete Furniture Item</h2>
+                            <p className="text-gray-500 mb-6">
+                                Are you sure you want to delete this furniture item? This action cannot be undone.
+                            </p>
+                            <div className="flex gap-3">
+                                <button 
+                                    onClick={() => setItemToDelete(null)}
+                                    className="flex-1 px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg font-medium transition-colors"
+                                >
+                                    Cancel
+                                </button>
+                                <button 
+                                    onClick={confirmDelete}
+                                    className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors"
+                                >
+                                    Delete Item
+                                </button>
+                            </div>
+                        </div>
+                    </motion.div>
+                </div>
+            )}
+
         </motion.div>
     );
 }
