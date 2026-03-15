@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from "react";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
+import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { Project } from "../App";
 
 interface Visualization3DProps {
@@ -220,7 +221,59 @@ export function Visualization3D({ project, cameraResetTrigger }: Visualization3D
       const group = new THREE.Group();
       let mainMesh: THREE.Mesh | null = null;
 
-      if (item.type === 'chair') {
+      if (item.glbUrl) {
+          // Load Custom GLB Model
+          const loader = new GLTFLoader();
+          loader.load(
+              item.glbUrl,
+              (gltf) => {
+                  const model = gltf.scene;
+
+                  // Center the model's geometry
+                  const box = new THREE.Box3().setFromObject(model);
+                  const center = box.getCenter(new THREE.Vector3());
+                  const size = box.getSize(new THREE.Vector3());
+
+                  // Calculate scale to fit the item's defined width/length
+                  // Default height based on width/length ratio for uniform scaling
+                  const maxDim = Math.max(size.x, size.z);
+                  const targetMaxDim = Math.max(item.width, item.length);
+                  const scale = targetMaxDim / maxDim;
+
+                  model.scale.set(scale, scale, scale);
+                  
+                  // Re-calculate box after scaling to position it correctly on the floor
+                  const scaledBox = new THREE.Box3().setFromObject(model);
+                  model.position.x = -center.x * scale;
+                  model.position.y = -scaledBox.min.y; // Sit on the floor
+                  model.position.z = -center.z * scale;
+
+                  // Apply shadow and material enhancements to loaded model
+                  model.traverse((child) => {
+                      if (child instanceof THREE.Mesh) {
+                          child.castShadow = true;
+                          child.receiveShadow = true;
+                          
+                          // Optional: override material color/properties if desired, 
+                          // but usually GLBs come with their own textures.
+                          // You can blend the chosen color by tweaking child.material.color
+                      }
+                  });
+
+                  group.add(model);
+              },
+              undefined,
+              (error) => {
+                  console.error('Error loading GLB:', error);
+                  // Optional: Add a fallback red box if GLB fails to load
+                  const fallbackGeo = new THREE.BoxGeometry(item.width, item.length / 2, item.length);
+                  const fallbackMat = new THREE.MeshStandardMaterial({ color: 0xff0000 });
+                  const fallback = new THREE.Mesh(fallbackGeo, fallbackMat);
+                  fallback.position.y = item.length / 4;
+                  group.add(fallback);
+              }
+          );
+      } else if (item.type === 'chair') {
         // Chair: Tapered legs, rounded seat, curved backrest
         const legGeo = new THREE.CylinderGeometry(1.2, 0.8, item.length / 2, 12);
         const seatGeo = new THREE.BoxGeometry(item.width, 4, item.length);

@@ -5,49 +5,49 @@ export const FURNITURE_TYPES = [
   {
     id: "chair",
     name: "Classic Armchair",
-    image: "https://images.unsplash.com/photo-1760236963218-424a715d1816?q=80&w=200",
+    glbUrl: "https://example.com/chair.glb", // Placeholder
     dimensions: { w: 80, l: 80 }
   },
   {
     id: "sofa",
     name: "Modern 3-Seater",
-    image: "https://images.unsplash.com/photo-1606202598125-e2077bb5ebcc?q=80&w=200",
+    glbUrl: "https://example.com/sofa.glb",
     dimensions: { w: 220, l: 95 }
   },
   {
     id: "table",
     name: "Dining Table",
-    image: "https://images.unsplash.com/photo-1679309981674-cef0e23a7864?q=80&w=200",
+    glbUrl: "https://example.com/table.glb",
     dimensions: { w: 160, l: 90 }
   },
   {
-    id: "chair",
+    id: "chair-2",
     name: "Modern Accent Chair",
-    image: "https://images.unsplash.com/photo-1592078615290-033ee584e267?q=80&w=200",
+    glbUrl: "https://example.com/accent-chair.glb",
     dimensions: { w: 50, l: 50 }
   },
   {
     id: "bed",
     name: "Queen Size Bed",
-    image: "https://images.unsplash.com/photo-1505693314120-0d443867891c?q=80&w=200",
+    glbUrl: "https://example.com/bed.glb",
     dimensions: { w: 160, l: 200 }
   },
   {
     id: "lamp",
     name: "Modern Floor Lamp",
-    image: "https://images.unsplash.com/photo-1507473885765-e6ed057f782c?q=80&w=200",
+    glbUrl: "https://example.com/lamp.glb",
     dimensions: { w: 40, l: 40 }
   },
   {
     id: "plant",
     name: "Potted Monstera",
-    image: "https://images.unsplash.com/photo-1485955900006-10f4d324d411?q=80&w=200",
+    glbUrl: "https://example.com/monstera.glb",
     dimensions: { w: 50, l: 50 }
   },
   {
     id: "rug",
     name: "Vintage Area Rug",
-    image: "https://images.unsplash.com/photo-1534889156217-d643df14f14a?q=80&w=200",
+    glbUrl: "https://example.com/rug.glb",
     dimensions: { w: 200, l: 300 }
   }
 ];
@@ -83,11 +83,8 @@ export function FurnitureLibrary() {
             className="group relative bg-white border border-gray-200 rounded-lg p-2 cursor-grab active:cursor-grabbing hover:border-blue-400 hover:shadow-sm transition-all"
           >
             <div className="aspect-square bg-gray-50 rounded mb-2 overflow-hidden flex items-center justify-center p-2">
-              <img
-                src={item.image}
-                alt={item.name}
-                className="max-w-full max-h-full object-contain mix-blend-multiply group-hover:scale-110 transition-transform"
-              />
+              {/* Show generic package icon since we don't have images anymore */}
+              <Package className="text-gray-400 group-hover:scale-110 group-hover:text-blue-500 transition-transform" size={32} />
             </div>
             <div className="space-y-1">
               <p className="text-[10px] font-semibold text-gray-700 truncate">{item.name}</p>

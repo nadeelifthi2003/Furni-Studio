@@ -8,7 +8,7 @@ export interface FurnitureCatalogItem {
     type: string;
     name: string;
     dimensions: { w: number; l: number };
-    image: string;
+    glbUrl: string; // Required now
     status: 'active' | 'inactive';
 }
 
@@ -18,7 +18,7 @@ const mockFurniture: FurnitureCatalogItem[] = [
         type: 'chair',
         name: 'Classic Armchair',
         dimensions: { w: 80, l: 80 },
-        image: 'https://images.unsplash.com/photo-1760236963218-424a715d1816?q=80&w=200',
+        glbUrl: 'https://example.com/chair.glb', // Example placeholder
         status: 'active',
     },
     {
@@ -26,7 +26,7 @@ const mockFurniture: FurnitureCatalogItem[] = [
         type: 'sofa',
         name: 'Modern 3-Seater',
         dimensions: { w: 220, l: 95 },
-        image: 'https://images.unsplash.com/photo-1606202598125-e2077bb5ebcc?q=80&w=200',
+        glbUrl: 'https://example.com/sofa.glb',
         status: 'active',
     },
     {
@@ -34,7 +34,7 @@ const mockFurniture: FurnitureCatalogItem[] = [
         type: 'table',
         name: 'Dining Table',
         dimensions: { w: 160, l: 90 },
-        image: 'https://images.unsplash.com/photo-1679309981674-cef0e23a7864?q=80&w=200',
+        glbUrl: 'https://example.com/table.glb',
         status: 'active',
     },
 ];
@@ -45,6 +45,7 @@ export function AdminFurnitureManagement() {
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const [editingItem, setEditingItem] = useState<FurnitureCatalogItem | null>(null);
     const [itemToDelete, setItemToDelete] = useState<string | null>(null);
+    const [isSaving, setIsSaving] = useState(false);
 
     const filteredItems = furnitureItems.filter(item =>
         item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -63,10 +64,40 @@ export function AdminFurnitureManagement() {
         }
     };
 
-    const handleSaveItem = (e: React.FormEvent<HTMLFormElement>) => {
+    const handleSaveItem = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
+        setIsSaving(true);
         const formData = new FormData(e.currentTarget);
         
+        let fileUrl = editingItem?.glbUrl || '';
+        const glbFile = formData.get('glbFile') as File;
+
+        if (glbFile && glbFile.size > 0) {
+            try {
+                // Read as array buffer to send raw bytes since we pipe directly in Vite config
+                const buffer = await glbFile.arrayBuffer();
+                const response = await fetch(`/api/upload-model?name=${encodeURIComponent(glbFile.name)}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/octet-stream'
+                    },
+                    body: buffer
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Upload failed');
+                }
+                
+                const data = await response.json();
+                fileUrl = data.url;
+            } catch (err) {
+                console.error('Failed to upload', err);
+                toast.error('Failed to upload 3D model. Please try again.');
+                setIsSaving(false);
+                return;
+            }
+        }
+
         const newItem: FurnitureCatalogItem = {
             id: editingItem ? editingItem.id : `furn-${Date.now()}`,
             name: formData.get('name') as string,
@@ -75,7 +106,7 @@ export function AdminFurnitureManagement() {
                 w: parseInt(formData.get('width') as string, 10),
                 l: parseInt(formData.get('length') as string, 10),
             },
-            image: formData.get('image') as string,
+            glbUrl: fileUrl,
             status: formData.get('status') as 'active' | 'inactive',
         };
 
@@ -89,6 +120,7 @@ export function AdminFurnitureManagement() {
 
         setIsAddModalOpen(false);
         setEditingItem(null);
+        setIsSaving(false);
     };
 
     return (
@@ -146,15 +178,15 @@ export function AdminFurnitureManagement() {
                                     <td className="px-6 py-4">
                                         <div className="flex items-center gap-3">
                                             <div className="w-10 h-10 rounded overflow-hidden bg-gray-100 flex items-center justify-center border border-gray-200">
-                                                {item.image ? (
-                                                    <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
-                                                ) : (
-                                                    <ImageIcon className="text-gray-400" size={20} />
-                                                )}
+                                                {/* Since we removed image, we just show an icon or a placeholder */}
+                                                <Box className="text-blue-500" size={24} />
                                             </div>
                                             <div>
                                                 <div className="font-medium text-gray-900">{item.name}</div>
-                                                <div className="text-sm text-gray-500">{item.id}</div>
+                                                <div className="text-xs text-gray-400 mt-0.5 truncate w-32" title={item.glbUrl}>
+                                                    {item.glbUrl ? (item.glbUrl.startsWith('blob:') ? 'Local GLB Uploaded' : '3D Model Attached') : 'No Model attached'}
+                                                </div>
+                                                <div className="text-[10px] text-gray-400 font-mono mt-0.5">{item.id}</div>
                                             </div>
                                         </div>
                                     </td>
@@ -275,15 +307,17 @@ export function AdminFurnitureManagement() {
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Image URL</label>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Upload 3D Model (.glb)</label>
                                 <input 
-                                    name="image"
-                                    type="url" 
-                                    required
-                                    defaultValue={editingItem?.image}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                    placeholder="https://example.com/image.jpg"
+                                    name="glbFile"
+                                    type="file" 
+                                    accept=".glb"
+                                    required={!editingItem?.glbUrl}
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
                                 />
+                                {editingItem?.glbUrl && (
+                                    <p className="text-xs text-green-600 mt-2 font-medium">✓ Model already attached. Uploading a new one will replace it.</p>
+                                )}
                             </div>
                             
                             <div>
@@ -302,15 +336,24 @@ export function AdminFurnitureManagement() {
                                 <button 
                                     type="button"
                                     onClick={() => setIsAddModalOpen(false)}
-                                    className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg font-medium transition-colors"
+                                    disabled={isSaving}
+                                    className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg font-medium transition-colors disabled:opacity-50"
                                 >
                                     Cancel
                                 </button>
                                 <button 
                                     type="submit"
-                                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
+                                    disabled={isSaving}
+                                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50 flex items-center gap-2"
                                 >
-                                    {editingItem ? 'Save Changes' : 'Add Furniture'}
+                                    {isSaving ? (
+                                        <>
+                                            <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>
+                                            Saving...
+                                        </>
+                                    ) : (
+                                        editingItem ? 'Save Changes' : 'Add Furniture'
+                                    )}
                                 </button>
                             </div>
                         </form>

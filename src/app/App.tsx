@@ -48,7 +48,7 @@ export interface FurnitureItem {
   rotation: number;
   color: string;
   shading: number;
-  image: string;
+  glbUrl?: string; // Optional since users might not configure a URL right away, but we default to standard shapes if missing
 }
 
 export interface Project {

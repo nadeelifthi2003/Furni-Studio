@@ -12,7 +12,8 @@ import {
   RefreshCw,
   Sliders,
   Maximize,
-  Expand
+  Expand,
+  Package
 } from "lucide-react";
 
 import { toast } from "sonner";
@@ -260,7 +261,7 @@ export function PropertiesPanel({
       <div className="space-y-8">
         <div className="flex items-center gap-4 pb-6 border-b border-gray-100">
           <div className="w-14 h-14 bg-gray-50 rounded-lg border border-gray-200 flex items-center justify-center p-2">
-            <img src={selectedItem.image} alt={selectedItem.name} className="max-w-full max-h-full object-contain" />
+            <Package className="text-gray-400" size={32} />
           </div>
           <div>
             <h3 className="text-sm font-bold text-gray-900">{selectedItem.name}</h3>
