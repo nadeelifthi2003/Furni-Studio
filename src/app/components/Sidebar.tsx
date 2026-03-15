@@ -1,5 +1,5 @@
 import React from "react";
-import { LayoutDashboard, PlusCircle, Bookmark, Settings, LogOut, Package, Store } from "lucide-react";
+import { LayoutDashboard, PlusCircle, Bookmark, Settings, LogOut, Package, Store, Armchair } from "lucide-react";
 
 interface SidebarProps {
   activeTab: string;
@@ -21,6 +21,7 @@ export function Sidebar({ activeTab, setActiveTab, onLogout, userRole = 'designe
     { id: "admin-users", label: "Manage Users", icon: Bookmark },
     { id: "admin-projects", label: "All Projects", icon: Package },
     { id: "admin-stores", label: "Manage Stores", icon: Store },
+    { id: "admin-furniture", label: "Manage Furniture", icon: Armchair },
     { id: "settings", label: "Settings", icon: Settings },
   ] as const;
 
