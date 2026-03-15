@@ -1,7 +1,7 @@
 
-  # Furniture Room Visualization Project
+  # Furni Studio Visualization Project
 
-  This is a code bundle for Furniture Room Visualization Project. The original project is available at https://www.figma.com/design/PHHYREXcG6XQbbjoKIcKzb/Furniture-Room-Visualization-Project.
+ Figma link :- https://www.figma.com/design/wyYm9SiYh7YYWexKT64p7W/Furni-Studio-UI?node-id=0-1&t=OJUZLE1qbyt70JtK-1
 
   ## Running the code
 
