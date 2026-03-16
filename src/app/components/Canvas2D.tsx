@@ -1,6 +1,6 @@
 import React, { useRef, useState, useEffect } from "react";
 import { Project, FurnitureItem } from "../App";
-import { Move, RotateCw, Trash2, Maximize2 } from "lucide-react";
+import { Move, RotateCw, Trash2, Maximize2, Ruler } from "lucide-react";
 
 interface Canvas2DProps {
   project: Project;
@@ -15,6 +15,11 @@ export function Canvas2D({ project, selectedItemId, onSelectItem, updateProject 
   const containerRef = useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+
+  // Measurement Tool State
+  const [isMeasuring, setIsMeasuring] = useState(false);
+  const [measurePoints, setMeasurePoints] = useState<{x: number, y: number}[]>([]);
+  const [mousePos, setMousePos] = useState<{x: number, y: number} | null>(null);
 
   // Add Keyboard Support for Deletion
   useEffect(() => {
@@ -85,6 +90,14 @@ export function Canvas2D({ project, selectedItemId, onSelectItem, updateProject 
   };
 
   const handleMouseMove = (e: React.MouseEvent) => {
+    if (isMeasuring && containerRef.current) {
+      const rect = containerRef.current.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      setMousePos({ x, y });
+      return;
+    }
+
     if (!isDragging || !selectedItemId) return;
 
     const newItems = project.items.map(item => {
@@ -133,8 +146,15 @@ export function Canvas2D({ project, selectedItemId, onSelectItem, updateProject 
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
       onClick={(e) => {
+        if (isMeasuring && mousePos) {
+           if (measurePoints.length === 2) {
+               setMeasurePoints([mousePos]); // Reset measurement
+           } else {
+               setMeasurePoints([...measurePoints, mousePos]);
+           }
+        }
         // Only deselect if clicking the direct container, not the room or children
-        if (e.target === e.currentTarget) {
+        if (e.target === e.currentTarget && !isMeasuring) {
           onSelectItem(null);
         }
       }}
@@ -151,6 +171,46 @@ export function Canvas2D({ project, selectedItemId, onSelectItem, updateProject 
         <div className="absolute -left-12 top-0 bottom-0 flex items-center text-[10px] font-bold text-gray-400 [writing-mode:vertical-rl] rotate-180">
           {project.roomConfig.length} cm
         </div>
+
+        {/* Dynamic Measurement Tool Line */}
+        {isMeasuring && measurePoints.length > 0 && (
+          <svg className="absolute inset-0 pointer-events-none w-full h-full z-20" style={{ overflow: 'visible' }}>
+             {measurePoints.map((pt, i) => (
+                <circle key={i} cx={pt.x} cy={pt.y} r={4} fill="#eab308" />
+             ))}
+             {measurePoints.length === 1 && mousePos && (
+                <>
+                  <line x1={measurePoints[0].x} y1={measurePoints[0].y} x2={mousePos.x} y2={mousePos.y} stroke="#eab308" strokeWidth={2} strokeDasharray="4 4" />
+                  <text 
+                     x={(measurePoints[0].x + mousePos.x) / 2} 
+                     y={(measurePoints[0].y + mousePos.y) / 2 - 10} 
+                     fill="#eab308" 
+                     fontSize="12px" 
+                     fontWeight="bold"
+                     textAnchor="middle"
+                  >
+                     {Math.round(Math.hypot(mousePos.x - measurePoints[0].x, mousePos.y - measurePoints[0].y))} cm
+                  </text>
+                </>
+             )}
+             {measurePoints.length === 2 && (
+                 <>
+                  <line x1={measurePoints[0].x} y1={measurePoints[0].y} x2={measurePoints[1].x} y2={measurePoints[1].y} stroke="#eab308" strokeWidth={2} />
+                  <text 
+                     x={(measurePoints[0].x + measurePoints[1].x) / 2} 
+                     y={(measurePoints[0].y + measurePoints[1].y) / 2 - 10} 
+                     fill="#eab308" 
+                     fontSize="12px" 
+                     fontWeight="bold"
+                     textAnchor="middle"
+                     className="bg-white px-1"
+                  >
+                     {Math.round(Math.hypot(measurePoints[1].x - measurePoints[0].x, measurePoints[1].y - measurePoints[0].y))} cm
+                  </text>
+                 </>
+             )}
+          </svg>
+        )}
 
         {/* Furniture Items */}
         {project.items.map((item) => (
@@ -209,6 +269,24 @@ export function Canvas2D({ project, selectedItemId, onSelectItem, updateProject 
         <span>GRID: {GRID_SIZE}cm</span>
         <span className="w-px h-3 bg-gray-200"></span>
         <span>SCALE 1:1</span>
+      </div>
+      
+      {/* Measurement Tool Toggle */}
+      <div className="absolute top-6 right-6">
+        <button
+          onClick={() => {
+            setIsMeasuring(!isMeasuring);
+            setMeasurePoints([]);
+          }}
+          className={`flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold shadow-sm transition-colors border ${
+            isMeasuring 
+              ? 'bg-yellow-500 text-white border-yellow-600 shadow-yellow-500/20' 
+              : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
+          }`}
+        >
+          <Ruler size={16} />
+          {isMeasuring ? 'Exit Measurement' : 'Measure Tool'}
+        </button>
       </div>
     </div>
   );
