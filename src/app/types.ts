@@ -12,6 +12,7 @@ export interface FurnitureItem {
   width: number; // in meters
   depth: number; // in meters
   height: number; // in meters
+  elevation?: number; // relative vertical position
   color: string;
 }
 
