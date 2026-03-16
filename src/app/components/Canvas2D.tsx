@@ -122,12 +122,13 @@ export function Canvas2D({ project, selectedItemId, onSelectItem, updateProject 
     setIsDragging(false);
   };
 
-  // Convert cm to pixels for display (1cm = 1px for simplicity in this demo)
-  const roomStyle = {
+  // Build room style based on shape
+  const isLShape = project.roomConfig.shape === 'L-shape';
+  const roomStyle: React.CSSProperties = {
     width: `${project.roomConfig.width}px`,
     height: `${project.roomConfig.length}px`,
     backgroundColor: project.roomConfig.wallColor,
-    position: 'absolute' as const,
+    position: 'absolute',
     left: '50%',
     top: '50%',
     transform: 'translate(-50%, -50%)',
@@ -136,6 +137,8 @@ export function Canvas2D({ project, selectedItemId, onSelectItem, updateProject 
     borderRadius: '4px',
     backgroundImage: `linear-gradient(#e5e7eb 1px, transparent 1px), linear-gradient(90deg, #e5e7eb 1px, transparent 1px)`,
     backgroundSize: `${GRID_SIZE}px ${GRID_SIZE}px`,
+    // L-shape: cut out the top-right quadrant
+    ...(isLShape ? { clipPath: 'polygon(0% 0%, 50% 0%, 50% 50%, 100% 50%, 100% 100%, 0% 100%)' } : {}),
   };
 
   return (
