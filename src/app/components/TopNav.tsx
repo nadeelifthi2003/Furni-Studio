@@ -1,5 +1,5 @@
-import React from "react";
-import { Save, Undo2, Redo2, User, LayoutGrid, Box, ChevronRight } from "lucide-react";
+import React, { useState } from "react";
+import { Save, Undo2, Redo2, User, LayoutGrid, Box, ChevronRight, Download, FileJson, Image } from "lucide-react";
 
 interface TopNavProps {
   projectName: string;
@@ -10,6 +10,8 @@ interface TopNavProps {
   onRedo: () => void;
   canUndo: boolean;
   canRedo: boolean;
+  onExportJSON?: () => void;
+  onExportImage?: () => void;
 }
 
 export function TopNav({ 
@@ -20,8 +22,11 @@ export function TopNav({
   onUndo, 
   onRedo,
   canUndo,
-  canRedo
+  canRedo,
+  onExportJSON,
+  onExportImage
 }: TopNavProps) {
+  const [showExportMenu, setShowExportMenu] = useState(false);
   return (
     <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-6 z-20 shadow-sm">
       <div className="flex items-center gap-4">
@@ -80,6 +85,35 @@ export function TopNav({
           <Save size={18} />
           Save Design
         </button>
+
+        {/* Export Dropdown */}
+        <div className="relative">
+          <button
+            onClick={() => setShowExportMenu(!showExportMenu)}
+            className="flex items-center gap-2 bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-semibold transition-colors"
+          >
+            <Download size={18} />
+            Export
+          </button>
+          {showExportMenu && (
+            <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50">
+              <button
+                onClick={() => { onExportJSON?.(); setShowExportMenu(false); }}
+                className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+              >
+                <FileJson size={16} className="text-blue-500" />
+                Export as JSON
+              </button>
+              <button
+                onClick={() => { onExportImage?.(); setShowExportMenu(false); }}
+                className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+              >
+                <Image size={16} className="text-green-500" />
+                Export as Image
+              </button>
+            </div>
+          )}
+        </div>
 
         <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-blue-500 to-indigo-600 flex items-center justify-center text-white text-xs font-bold ring-2 ring-gray-100">
           JD
