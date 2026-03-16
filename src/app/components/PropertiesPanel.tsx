@@ -287,7 +287,7 @@ export function PropertiesPanel({
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-3 gap-2">
               <div>
                 <div className="flex justify-between text-[11px] text-gray-600 mb-2 font-bold uppercase">
                   <span>Width</span>
@@ -299,7 +299,7 @@ export function PropertiesPanel({
                     const val = parseInt(e.target.value);
                     updateItem({ ...selectedItem, width: isNaN(val) ? 0 : val });
                   }}
-                  className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-xs font-bold focus:ring-1 focus:ring-blue-500 outline-none"
+                  className="w-full px-2 py-2 bg-gray-50 border border-gray-200 rounded-lg text-xs font-bold focus:ring-1 focus:ring-blue-500 outline-none"
                 />
               </div>
               <div>
@@ -313,7 +313,21 @@ export function PropertiesPanel({
                     const val = parseInt(e.target.value);
                     updateItem({ ...selectedItem, length: isNaN(val) ? 0 : val });
                   }}
-                  className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-xs font-bold focus:ring-1 focus:ring-blue-500 outline-none"
+                  className="w-full px-2 py-2 bg-gray-50 border border-gray-200 rounded-lg text-xs font-bold focus:ring-1 focus:ring-blue-500 outline-none"
+                />
+              </div>
+              <div>
+                <div className="flex justify-between text-[11px] text-gray-600 mb-2 font-bold uppercase">
+                  <span>Elev.</span>
+                </div>
+                <input
+                  type="number"
+                  value={selectedItem.elevation || 0}
+                  onChange={(e) => {
+                    const val = parseInt(e.target.value);
+                    updateItem({ ...selectedItem, elevation: isNaN(val) ? 0 : val });
+                  }}
+                  className="w-full px-2 py-2 bg-gray-50 border border-gray-200 rounded-lg text-xs font-bold focus:ring-1 focus:ring-blue-500 outline-none"
                 />
               </div>
             </div>
