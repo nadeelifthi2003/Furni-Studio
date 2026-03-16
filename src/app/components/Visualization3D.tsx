@@ -1,14 +1,18 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
-import { Project } from "../App";
+import { Project, FurnitureItem } from "../App";
 
 interface Visualization3DProps {
   project: Project;
   cameraResetTrigger?: number;
+  selectedItemId?: string | null;
+  onSelectItem?: (id: string | null) => void;
+  onUpdateItem?: (item: FurnitureItem) => void;
+  onAddItem?: (item: FurnitureItem) => void;
 }
 
-export function Visualization3D({ project, cameraResetTrigger }: Visualization3DProps) {
+export function Visualization3D({ project, cameraResetTrigger, selectedItemId, onSelectItem, onUpdateItem, onAddItem }: Visualization3DProps) {
   useEffect(() => {
     if (cameraResetTrigger && cameraResetTrigger > 0 && controlsRef.current && cameraRef.current) {
       controlsRef.current.reset();
@@ -26,10 +30,25 @@ export function Visualization3D({ project, cameraResetTrigger }: Visualization3D
   const ambientLightRef = useRef<THREE.AmbientLight | null>(null);
   const directionalLightRef = useRef<THREE.DirectionalLight | null>(null);
   const buildRoomRef = useRef<(() => void) | null>(null);
+  const floorMeshRef = useRef<THREE.Mesh | null>(null);
+
+  // Dragging state references
+  const isDraggingRef = useRef(false);
+  const draggedObjectRef = useRef<THREE.Group | null>(null);
+  const dragOffsetRef = useRef(new THREE.Vector3());
+  const raycasterRef = useRef(new THREE.Raycaster());
+
+  // Vertical dragging state
+  const dragPlaneRef = useRef(new THREE.Plane());
+  const isVerticalDragRef = useRef(false);
+
+  // Instead of a direct mount inside the Effect, we can wrap the main div to indicate loading
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     if (!mountRef.current) return;
-
+    setIsLoading(false);
+    
     // Initialize Scene
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0xf3f4f6);
@@ -83,48 +102,91 @@ export function Visualization3D({ project, cameraResetTrigger }: Visualization3D
         child instanceof THREE.Light || child === furnitureGroupRef.current
       );
 
-      const { width, length, height, wallColor } = project.roomConfig;
-
-      // Floor
-      const floorGeometry = new THREE.PlaneGeometry(width, length);
-      const floorMaterial = new THREE.MeshStandardMaterial({
-        color: wallColor,
-        roughness: 0.8,
-        metalness: 0.1
-      });
-      const floor = new THREE.Mesh(floorGeometry, floorMaterial);
-      floor.rotation.x = -Math.PI / 2;
-      floor.receiveShadow = true;
-      scene.add(floor);
-
-      // Grid helper on floor
-      const grid = new THREE.GridHelper(Math.max(width, length), Math.max(width, length) / 20, 0xcccccc, 0xeeeeee);
-      grid.position.y = 0.1;
-      scene.add(grid);
-
-      // Walls
+      const { width, length, height, wallColor, shape } = project.roomConfig;
       const wallMaterial = new THREE.MeshStandardMaterial({ color: wallColor, side: THREE.DoubleSide });
+      const floorMaterial = new THREE.MeshStandardMaterial({ color: wallColor, roughness: 0.8, metalness: 0.1 });
 
-      // Back wall
-      const backWallGeo = new THREE.PlaneGeometry(width, height);
-      const backWall = new THREE.Mesh(backWallGeo, wallMaterial);
-      backWall.position.set(0, height / 2, -length / 2);
-      backWall.receiveShadow = true;
-      scene.add(backWall);
+      if (shape === 'L-shape') {
+        // L-shape: 6 vertices defining the floor polygon
+        // Cut out top-right quadrant
+        const hw = width / 2;
+        const hl = length / 2;
+        const lShape = new THREE.Shape();
+        lShape.moveTo(-hw, -hl);
+        lShape.lineTo(-hw, hl);
+        lShape.lineTo(0, hl);
+        lShape.lineTo(0, 0);
+        lShape.lineTo(hw, 0);
+        lShape.lineTo(hw, -hl);
+        lShape.lineTo(-hw, -hl);
 
-      // Left wall
-      const leftWallGeo = new THREE.PlaneGeometry(length, height);
-      const leftWall = new THREE.Mesh(leftWallGeo, wallMaterial);
-      leftWall.position.set(-width / 2, height / 2, 0);
-      leftWall.rotation.y = Math.PI / 2;
-      leftWall.receiveShadow = true;
-      scene.add(leftWall);
+        const floorGeo = new THREE.ShapeGeometry(lShape);
+        const floor = new THREE.Mesh(floorGeo, floorMaterial);
+        floor.rotation.x = -Math.PI / 2;
+        floor.receiveShadow = true;
+        floor.name = 'floor';
+        scene.add(floor);
+        floorMeshRef.current = floor;
 
-      // Add a small skirting board for detail
-      const skirtingGeo = new THREE.BoxGeometry(width, 10, 2);
-      const skirting = new THREE.Mesh(skirtingGeo, new THREE.MeshStandardMaterial({ color: 0xdddddd }));
-      skirting.position.set(0, 5, -length / 2 + 1);
-      scene.add(skirting);
+        // Grid helper
+        const grid = new THREE.GridHelper(Math.max(width, length), Math.max(width, length) / 20, 0xcccccc, 0xeeeeee);
+        grid.position.y = 0.1;
+        scene.add(grid);
+
+        // Walls along L-shape edges
+        const wallPoints: [number, number][] = [
+          [-hw, -hl], [-hw, hl], [0, hl], [0, 0], [hw, 0], [hw, -hl]
+        ];
+        for (let i = 0; i < wallPoints.length; i++) {
+          const [x1, z1] = wallPoints[i];
+          const [x2, z2] = wallPoints[(i + 1) % wallPoints.length];
+          const dx = x2 - x1;
+          const dz = z2 - z1;
+          const wallLen = Math.sqrt(dx * dx + dz * dz);
+          const wallGeo = new THREE.PlaneGeometry(wallLen, height);
+          const wall = new THREE.Mesh(wallGeo, wallMaterial);
+          wall.position.set((x1 + x2) / 2, height / 2, (z1 + z2) / 2);
+          wall.rotation.y = -Math.atan2(dz, dx);
+          wall.receiveShadow = true;
+          scene.add(wall);
+        }
+      } else {
+        // Rectangle (default)
+        const floorGeometry = new THREE.PlaneGeometry(width, length);
+        const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+        floor.rotation.x = -Math.PI / 2;
+        floor.receiveShadow = true;
+        floor.name = 'floor';
+        scene.add(floor);
+        floorMeshRef.current = floor;
+
+        // Grid helper on floor
+        const grid = new THREE.GridHelper(Math.max(width, length), Math.max(width, length) / 20, 0xcccccc, 0xeeeeee);
+        grid.position.y = 0.1;
+        scene.add(grid);
+
+        // Walls
+        // Back wall
+        const backWallGeo = new THREE.PlaneGeometry(width, height);
+        const backWall = new THREE.Mesh(backWallGeo, wallMaterial);
+        backWall.position.set(0, height / 2, -length / 2);
+        backWall.receiveShadow = true;
+        scene.add(backWall);
+
+        // Left wall
+        const leftWallGeo = new THREE.PlaneGeometry(length, height);
+        const leftWall = new THREE.Mesh(leftWallGeo, wallMaterial);
+        leftWall.position.set(-width / 2, height / 2, 0);
+        leftWall.rotation.y = Math.PI / 2;
+        leftWall.receiveShadow = true;
+        scene.add(leftWall);
+
+        // Skirting board
+        const skirtingGeo = new THREE.BoxGeometry(width, 10, 2);
+        const skirting = new THREE.Mesh(skirtingGeo, new THREE.MeshStandardMaterial({ color: 0xdddddd }));
+        skirting.position.set(0, 5, -length / 2 + 1);
+        scene.add(skirting);
+      }
     };
 
     buildRoom();
@@ -185,7 +247,7 @@ export function Visualization3D({ project, cameraResetTrigger }: Visualization3D
     if (buildRoomRef.current) {
         buildRoomRef.current();
     }
-  }, [project.roomConfig.width, project.roomConfig.length, project.roomConfig.height, project.roomConfig.wallColor]);
+  }, [project.roomConfig.width, project.roomConfig.length, project.roomConfig.height, project.roomConfig.wallColor, project.roomConfig.shape]);
 
   // Update furniture items when project changes
   useEffect(() => {
@@ -504,9 +566,13 @@ export function Visualization3D({ project, cameraResetTrigger }: Visualization3D
       // 2D X/Y -> 3D X/Z
       const x3d = item.x + item.width / 2 - project.roomConfig.width / 2;
       const z3d = item.y + item.length / 2 - project.roomConfig.length / 2;
+      const y3d = item.elevation || 0;
 
-      group.position.set(x3d, 0, z3d);
+      group.position.set(x3d, y3d, z3d);
       group.rotation.y = -(item.rotation * Math.PI) / 180;
+
+      // Assign ID for raycasting identification
+      group.userData.id = item.id;
 
       furnitureGroupRef.current?.add(group);
     });
@@ -539,7 +605,149 @@ export function Visualization3D({ project, cameraResetTrigger }: Visualization3D
 
   return (
     <div className="w-full h-full relative bg-gray-200">
-      <div ref={mountRef} className="w-full h-full" />
+      {isLoading && (
+        <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-gray-100/80 backdrop-blur-sm">
+          <div className="w-8 h-8 rounded-full border-4 border-blue-200 border-t-blue-600 animate-spin mb-4"></div>
+          <p className="text-sm font-semibold text-gray-600 animate-pulse">Initializing Rendering Engine...</p>
+        </div>
+      )}
+      <div ref={mountRef} className="w-full h-full"
+        onPointerDown={(e) => {
+          if (!cameraRef.current || !furnitureGroupRef.current || !mountRef.current || !floorMeshRef.current) return;
+          const rect = mountRef.current.getBoundingClientRect();
+          const mouse = new THREE.Vector2(
+            ((e.clientX - rect.left) / rect.width) * 2 - 1,
+            -((e.clientY - rect.top) / rect.height) * 2 + 1
+          );
+          raycasterRef.current.setFromCamera(mouse, cameraRef.current);
+          const intersects = raycasterRef.current.intersectObjects(furnitureGroupRef.current.children, true);
+          if (intersects.length > 0) {
+            let object = intersects[0].object;
+            while (object.parent && object.parent !== furnitureGroupRef.current) {
+              object = object.parent;
+            }
+            if (object.parent === furnitureGroupRef.current) {
+              if (controlsRef.current) controlsRef.current.enabled = false;
+              isDraggingRef.current = true;
+              draggedObjectRef.current = object as THREE.Group;
+              
+              if (onSelectItem) onSelectItem(object.userData.id);
+              
+              isVerticalDragRef.current = e.shiftKey;
+              
+              if (e.shiftKey) {
+                // Create a vertical plane parallel to camera facing
+                const normal = cameraRef.current.getWorldDirection(new THREE.Vector3()).negate();
+                normal.y = 0;
+                normal.normalize();
+                dragPlaneRef.current.setFromNormalAndCoplanarPoint(normal, object.position);
+                
+                raycasterRef.current.intersectPlane(dragPlaneRef.current, dragOffsetRef.current);
+                dragOffsetRef.current.sub(object.position);
+              } else {
+                const floorIntersects = raycasterRef.current.intersectObject(floorMeshRef.current);
+                if (floorIntersects.length > 0) {
+                  dragOffsetRef.current.copy(object.position).sub(floorIntersects[0].point);
+                  dragOffsetRef.current.y = 0;
+                }
+              }
+              (e.target as HTMLElement).setPointerCapture(e.pointerId);
+            }
+          } else {
+            // Clicked empty space or floor
+            if (onSelectItem) onSelectItem(null);
+          }
+        }}
+        onPointerMove={(e) => {
+          if (isDraggingRef.current && draggedObjectRef.current && floorMeshRef.current && cameraRef.current && mountRef.current) {
+            const rect = mountRef.current.getBoundingClientRect();
+            const mouse = new THREE.Vector2(
+              ((e.clientX - rect.left) / rect.width) * 2 - 1,
+              -((e.clientY - rect.top) / rect.height) * 2 + 1
+            );
+            raycasterRef.current.setFromCamera(mouse, cameraRef.current);
+            
+            if (isVerticalDragRef.current) {
+              const intersectPoint = new THREE.Vector3();
+              raycasterRef.current.intersectPlane(dragPlaneRef.current, intersectPoint);
+              if (intersectPoint) {
+                const newY = intersectPoint.y - dragOffsetRef.current.y;
+                draggedObjectRef.current.position.y = Math.max(0, newY); // allow floating, min floor
+              }
+            } else {
+              const floorIntersects = raycasterRef.current.intersectObject(floorMeshRef.current);
+              if (floorIntersects.length > 0) {
+                draggedObjectRef.current.position.set(
+                  floorIntersects[0].point.x + dragOffsetRef.current.x,
+                  draggedObjectRef.current.position.y,
+                  floorIntersects[0].point.z + dragOffsetRef.current.z
+                );
+              }
+            }
+          }
+        }}
+        onPointerUp={(e) => {
+          if (isDraggingRef.current && draggedObjectRef.current && onUpdateItem) {
+            isDraggingRef.current = false;
+            if (controlsRef.current) controlsRef.current.enabled = true;
+            (e.target as HTMLElement).releasePointerCapture(e.pointerId);
+            
+            const itemId = draggedObjectRef.current.userData.id;
+            const item = project.items.find(i => i.id === itemId);
+            if (item) {
+               const GRID = 20;
+               const rawX = draggedObjectRef.current.position.x - item.width/2 + project.roomConfig.width/2;
+               const rawY = draggedObjectRef.current.position.z - item.length/2 + project.roomConfig.length/2;
+               const elevation = draggedObjectRef.current.position.y;
+               
+               onUpdateItem({
+                 ...item,
+                 x: Math.round(rawX / GRID) * GRID,
+                 y: Math.round(rawY / GRID) * GRID,
+                 elevation: Math.round(elevation)
+               });
+            }
+            draggedObjectRef.current = null;
+          }
+        }}
+        onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; }}
+        onDrop={(e) => {
+          e.preventDefault();
+          const furnitureData = e.dataTransfer.getData('furniture');
+          if (!furnitureData || !onAddItem || !mountRef.current || !cameraRef.current || !floorMeshRef.current) return;
+          
+          const furniture = JSON.parse(furnitureData);
+          const rect = mountRef.current.getBoundingClientRect();
+          const mouse = new THREE.Vector2(
+            ((e.clientX - rect.left) / rect.width) * 2 - 1,
+            -((e.clientY - rect.top) / rect.height) * 2 + 1
+          );
+          const raycaster = new THREE.Raycaster();
+          raycaster.setFromCamera(mouse, cameraRef.current);
+          const intersects = raycaster.intersectObject(floorMeshRef.current);
+          if (intersects.length > 0) {
+            const point = intersects[0].point;
+            // Convert 3D (center-based) back to 2D (top-left based)
+            const x2d = point.x + project.roomConfig.width / 2 - (furniture.dimensions.w / 2);
+            const y2d = point.z + project.roomConfig.length / 2 - (furniture.dimensions.l / 2);
+            const GRID = 20;
+            const newItem: FurnitureItem = {
+              id: Math.random().toString(36).substr(2, 9),
+              type: furniture.id,
+              name: furniture.name,
+              x: Math.round(x2d / GRID) * GRID,
+              y: Math.round(y2d / GRID) * GRID,
+              width: furniture.dimensions.w,
+              length: furniture.dimensions.l,
+              rotation: 0,
+              color: '#3b82f6',
+              shading: 0.5,
+              image: furniture.image,
+            };
+            onAddItem(newItem);
+          }
+        }}
+      />
 
       <div className="absolute top-6 left-6 flex flex-col gap-2">
         <div className="bg-white/90 backdrop-blur-sm p-3 rounded-lg border border-gray-200 shadow-sm">

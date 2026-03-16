@@ -9,37 +9,48 @@ interface LoginProps {
 
 export function Login({ onLogin, onBack }: LoginProps) {
   const [loginType, setLoginType] = useState<"designer" | "admin">("designer");
+  const [isSignUp, setIsSignUp] = useState(false);
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     setLoading(true);
 
-    // Simulate API call
-    setTimeout(() => {
-      if (loginType === "designer") {
-        if (email === "designer@furnihome.com" && password === "password") {
-          onLogin({ email, role: 'designer', name: 'Pro Designer' });
-        } else {
-          setError("Invalid designer credentials.");
-        }
-      } else if (loginType === "admin") {
-         if (email === "admin@furnihome.com" && password === "adminpass") {
-          onLogin({ email, role: 'admin', name: 'System Admin' });
-        } else {
-          setError("Invalid admin credentials.");
-        }
-      } else if (!email || !password) {
-        setError("Please fill in all fields.");
-      } else {
-        setError("Invalid email or password.");
-      }
+    if (!email || !password || (isSignUp && !name)) {
+      setError("Please fill in all fields.");
       setLoading(false);
-    }, 1000);
+      return;
+    }
+
+    // Using AuthService abstraction (which simulates the backend for now)
+    const { AuthService } = await import('../lib/db');
+    
+    if (isSignUp) {
+      const { user, error: authError } = await AuthService.signUp(email, name, loginType);
+      if (authError || !user) {
+        setError(authError?.message || "Registration failed.");
+      } else {
+        onLogin(user);
+      }
+    } else {
+      const { user, error: authError } = await AuthService.signIn(email, loginType);
+      if (authError || !user) {
+        setError(authError?.message || "Invalid credentials.");
+      } else {
+        if (password === (loginType === 'designer' ? 'password' : 'adminpass')) {
+          onLogin(user);
+        } else {
+          setError("Invalid email or password.");
+        }
+      }
+    }
+    
+    setLoading(false);
   };
 
   return (
@@ -178,6 +189,7 @@ export function Login({ onLogin, onBack }: LoginProps) {
                 setError("");
                 setEmail("");
                 setPassword("");
+                setName("");
               }}
               className={`relative z-10 flex-1 py-2.5 text-sm font-semibold rounded-lg transition-colors duration-300 ${
                 loginType === "designer" 
@@ -194,6 +206,7 @@ export function Login({ onLogin, onBack }: LoginProps) {
                 setError("");
                 setEmail("");
                 setPassword("");
+                setName("");
               }}
               className={`relative z-10 flex-1 py-2.5 text-sm font-semibold rounded-lg transition-colors duration-300 ${
                 loginType === "admin" 
@@ -205,7 +218,36 @@ export function Login({ onLogin, onBack }: LoginProps) {
             </button>
           </motion.div>
 
-          <form onSubmit={handleSubmit} className="space-y-5">
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <AnimatePresence mode="popLayout">
+              {isSignUp && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0, y: -10 }}
+                  animate={{ opacity: 1, height: 'auto', y: 0 }}
+                  exit={{ opacity: 0, height: 0, y: -10 }}
+                  transition={{ duration: 0.3 }}
+                >
+                  <label className="block text-xs font-semibold tracking-wide text-gray-400 uppercase mb-2 ml-1" htmlFor="name">
+                    Full Name
+                  </label>
+                  <div className="relative group">
+                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-gray-500 group-focus-within:text-blue-400 transition-colors">
+                      <User size={18} />
+                    </div>
+                    <input
+                      id="name"
+                      type="text"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      className="block w-full pl-11 pr-4 py-3.5 bg-black/30 border border-white/10 rounded-xl focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all text-white placeholder:text-gray-600 font-medium"
+                      placeholder="Jane Doe"
+                      required={isSignUp}
+                    />
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+            
             <motion.div
               initial={{ x: -10, opacity: 0 }}
               animate={{ x: 0, opacity: 1 }}
@@ -289,15 +331,34 @@ export function Login({ onLogin, onBack }: LoginProps) {
                 {loading ? (
                   <>
                     <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                    <span>Authenticating...</span>
+                    <span>{isSignUp ? "Registering..." : "Authenticating..."}</span>
                   </>
                 ) : (
                   <>
-                    <span>{loginType === 'designer' ? "Sign In to Workspace" : "Access Admin Portal"}</span>
+                    <span>{isSignUp ? "Create Account" : (loginType === 'designer' ? "Sign In to Workspace" : "Access Admin Portal")}</span>
                   </>
                 )}
               </div>
             </motion.button>
+            
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.9 }}
+              className="text-center mt-4"
+            >
+              <button
+                type="button"
+                onClick={() => {
+                  setIsSignUp(!isSignUp);
+                  setError("");
+                  setPassword("");
+                }}
+                className="text-sm text-gray-400 hover:text-white transition-colors"
+              >
+                {isSignUp ? "Already have an account? Sign In" : "Need an account? Sign Up"}
+              </button>
+            </motion.div>
           </form>
 
           <motion.div 

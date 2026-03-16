@@ -17,6 +17,8 @@ interface SavedDesignsProps {
   onEdit: (project: Project) => void;
 }
 
+import { ProjectService } from "../lib/db";
+
 const MOCK_PROJECTS: Project[] = [];
 
 export function SavedDesigns({ onEdit }: SavedDesignsProps) {
@@ -24,22 +26,19 @@ export function SavedDesigns({ onEdit }: SavedDesignsProps) {
   const [savedProjects, setSavedProjects] = useState<Project[]>([]);
 
   React.useEffect(() => {
-    const stored = localStorage.getItem("furni_studio_projects");
-    if (stored) {
-      try {
-        setSavedProjects(JSON.parse(stored));
-      } catch (e) {
-        setSavedProjects([]);
-      }
-    }
+    const loadProjects = async () => {
+      const { projects } = await ProjectService.getProjects();
+      setSavedProjects(projects);
+    };
+    loadProjects();
   }, []);
 
-  const handleDelete = (id: string, e: React.MouseEvent) => {
+  const handleDelete = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
     if (confirm("Are you sure you want to delete this design?")) {
+      await ProjectService.deleteProject(id);
       const updated = savedProjects.filter(p => p.id !== id);
       setSavedProjects(updated);
-      localStorage.setItem("furni_studio_projects", JSON.stringify(updated));
     }
   };
 
