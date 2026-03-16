@@ -17,6 +17,7 @@ import { AdminStoreManagement } from "./components/AdminStoreManagement";
 import { AdminFurnitureManagement } from "./components/AdminFurnitureManagement";
 import { Toaster, toast } from "sonner";
 import { motion, AnimatePresence } from "motion/react";
+import { useStore } from "./store";
 
 // Types
 export type RoomShape = "Rectangle" | "L-shape" | "Custom";
@@ -60,88 +61,18 @@ export interface Project {
   lightingSettings: LightingSettings;
 }
 
-const INITIAL_LIGHTING_SETTINGS: LightingSettings = {
-  ambientIntensity: 70,
-  shadowSoftness: 50,
-  directionalIntensity: 80,
-  environmentPreset: "Daylight",
-};
-
-const INITIAL_ROOM_CONFIG: RoomConfig = {
-  width: 500,
-  length: 400,
-  height: 250,
-  shape: "Rectangle",
-  wallColor: "#f3f4f6",
-};
-
 export default function App() {
   const [showLanding, setShowLanding] = useState(true);
-  const [currentUser, setCurrentUser] = useState<import('./types').User | null>(null);
-  const [activeTab, setActiveTab] = useState<string>("dashboard");
-  const [viewMode, setViewMode] = useState<"2d" | "3d">("2d");
-  const [project, setProject] = useState<Project>({
-    id: "proj-1",
-    name: "Modern Living Room Consultation",
-    lastModified: new Date().toISOString(),
-    roomConfig: INITIAL_ROOM_CONFIG,
-    items: [],
-    lightingSettings: INITIAL_LIGHTING_SETTINGS,
-  });
-  const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
-  const [history, setHistory] = useState<{ past: Project[]; present: Project; future: Project[] }>({
-    past: [],
-    present: {
-      id: "proj-1",
-      name: "Modern Living Room Consultation",
-      lastModified: new Date().toISOString(),
-      roomConfig: INITIAL_ROOM_CONFIG,
-      items: [],
-      lightingSettings: INITIAL_LIGHTING_SETTINGS,
-    },
-    future: [],
-  });
 
-  const updateProject = useCallback((newProject: Project, skipHistory = false) => {
-    setProject(newProject);
-    if (!skipHistory) {
-      setHistory((prev) => ({
-        past: [...prev.past, prev.present],
-        present: newProject,
-        future: [],
-      }));
-    } else {
-      setHistory((prev) => ({ ...prev, present: newProject }));
-    }
-  }, []);
-
-  const undo = () => {
-    if (history.past.length === 0) return;
-    const previous = history.past[history.past.length - 1];
-    const newPast = history.past.slice(0, history.past.length - 1);
-    setHistory({
-      past: newPast,
-      present: previous,
-      future: [history.present, ...history.future],
-    });
-    setProject(previous);
-    toast.info("Action undone");
-  };
-
-  const redo = () => {
-    if (history.future.length === 0) return;
-    const next = history.future[0];
-    const newFuture = history.future.slice(1);
-    setHistory({
-      past: [...history.past, history.present],
-      present: next,
-      future: newFuture,
-    });
-    setProject(next);
-    toast.info("Action redone");
-  };
-
-  const [cameraResetTrigger, setCameraResetTrigger] = useState(0);
+  const {
+    currentUser, setCurrentUser,
+    activeTab, setActiveTab,
+    viewMode, setViewMode,
+    project, setProject, updateProject,
+    selectedItemId, setSelectedItemId,
+    history, undo, redo,
+    cameraResetTrigger, triggerCameraReset
+  } = useStore();
 
   const handleSave = () => {
     try {
@@ -157,7 +88,7 @@ export default function App() {
       }
 
       localStorage.setItem("furni_studio_projects", JSON.stringify(projects));
-      setProject(projectToSave);
+      setProject(projectToSave); // To update last modified without putting to history
 
       toast.success("Design saved successfully!");
     } catch (err) {
@@ -258,7 +189,7 @@ export default function App() {
                 exit={{ opacity: 0, y: -20 }}
                 className="p-8 h-full overflow-y-auto"
               >
-                <h1 className="text-2xl font-semibold mb-6">Welcome back, Designer</h1>
+                <h1 className="text-2xl font-semibold mb-6">Welcome back, {currentUser.name || 'Designer'}</h1>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   <div
                     onClick={() => setActiveTab("editor")}
@@ -279,7 +210,7 @@ export default function App() {
               <SavedDesigns
                 onEdit={(proj) => {
                   setProject(proj);
-                  setHistory({ past: [], present: proj, future: [] });
+                  useStore.setState({ history: { past: [], present: proj, future: [] }});
                   setActiveTab("editor");
                 }}
               />
@@ -323,7 +254,7 @@ export default function App() {
                       project={project}
                       selectedItemId={selectedItemId}
                       onSelectItem={setSelectedItemId}
-                      updateProject={(newProject) => updateProject(newProject)}
+                      updateProject={updateProject}
                     />
                   ) : (
                     <Visualization3D project={project} cameraResetTrigger={cameraResetTrigger} />
@@ -338,7 +269,7 @@ export default function App() {
                     allItems={project.items}
                     lightingSettings={project.lightingSettings}
                     onScaleAllItems={handleScaleAllItems}
-                    onResetCamera={() => setCameraResetTrigger(prev => prev + 1)}
+                    onResetCamera={triggerCameraReset}
                     updateItem={(updatedItem) => {
                       const newItems = project.items.map(item => item.id === updatedItem.id ? updatedItem : item);
                       updateProject({ ...project, items: newItems });
@@ -364,4 +295,4 @@ export default function App() {
       <Toaster position="bottom-right" />
     </div>
   );
-}
+}
