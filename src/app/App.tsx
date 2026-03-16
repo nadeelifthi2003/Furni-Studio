@@ -46,6 +46,7 @@ export interface FurnitureItem {
   y: number;
   width: number;
   length: number;
+  elevation?: number;
   rotation: number;
   color: string;
   shading: number;
@@ -142,6 +143,33 @@ export default function App() {
     });
   }, [project, updateProject]);
 
+  const handleExportJSON = () => {
+    const dataStr = JSON.stringify(project, null, 2);
+    const blob = new Blob([dataStr], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${project.name.replace(/\s+/g, '_')}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success("Project exported as JSON!");
+  };
+
+  const handleExportImage = () => {
+    // Capture the current workspace canvas element
+    const canvas = document.querySelector('canvas') as HTMLCanvasElement | null;
+    if (canvas) {
+      const url = canvas.toDataURL('image/png');
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${project.name.replace(/\s+/g, '_')}_3d.png`;
+      a.click();
+      toast.success("3D snapshot exported!");
+    } else {
+      toast.error("Switch to 3D view to capture a snapshot.");
+    }
+  };
+
   if (showLanding) {
     return <LandingPage onLoginClick={() => setShowLanding(false)} />;
   }
@@ -176,6 +204,8 @@ export default function App() {
             onRedo={redo}
             canUndo={history.past.length > 0}
             canRedo={history.future.length > 0}
+            onExportJSON={handleExportJSON}
+            onExportImage={handleExportImage}
           />
         )}
 
@@ -257,7 +287,20 @@ export default function App() {
                       updateProject={updateProject}
                     />
                   ) : (
-                    <Visualization3D project={project} cameraResetTrigger={cameraResetTrigger} />
+                    <Visualization3D
+                      project={project}
+                      cameraResetTrigger={cameraResetTrigger}
+                      selectedItemId={selectedItemId}
+                      onSelectItem={setSelectedItemId}
+                      onUpdateItem={(updatedItem) => {
+                        const newItems = project.items.map(item => item.id === updatedItem.id ? updatedItem : item);
+                        updateProject({ ...project, items: newItems });
+                      }}
+                      onAddItem={(newItem) => {
+                        updateProject({ ...project, items: [...project.items, newItem] });
+                        setSelectedItemId(newItem.id);
+                      }}
+                    />
                   )}
                 </div>
 
