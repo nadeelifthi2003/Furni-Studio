@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { Project } from "../App";
@@ -27,9 +27,13 @@ export function Visualization3D({ project, cameraResetTrigger }: Visualization3D
   const directionalLightRef = useRef<THREE.DirectionalLight | null>(null);
   const buildRoomRef = useRef<(() => void) | null>(null);
 
+  // Instead of a direct mount inside the Effect, we can wrap the main div to indicate loading
+  const [isLoading, setIsLoading] = useState(true);
+
   useEffect(() => {
     if (!mountRef.current) return;
-
+    setIsLoading(false);
+    
     // Initialize Scene
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0xf3f4f6);
@@ -539,6 +543,12 @@ export function Visualization3D({ project, cameraResetTrigger }: Visualization3D
 
   return (
     <div className="w-full h-full relative bg-gray-200">
+      {isLoading && (
+        <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-gray-100/80 backdrop-blur-sm">
+          <div className="w-8 h-8 rounded-full border-4 border-blue-200 border-t-blue-600 animate-spin mb-4"></div>
+          <p className="text-sm font-semibold text-gray-600 animate-pulse">Initializing Rendering Engine...</p>
+        </div>
+      )}
       <div ref={mountRef} className="w-full h-full" />
 
       <div className="absolute top-6 left-6 flex flex-col gap-2">
