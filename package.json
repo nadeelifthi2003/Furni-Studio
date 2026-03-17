@@ -42,7 +42,7 @@
     "@radix-ui/react-tooltip": "1.1.8",
     "@react-three/drei": "^9.88.0",
     "@react-three/fiber": "^8.15.11",
-    "@supabase/supabase-js": "^2.99.1",
+    "@supabase/supabase-js": "^2.99.2",
     "@types/three": "^0.164.1",
     "class-variance-authority": "0.7.1",
     "clsx": "2.1.1",
