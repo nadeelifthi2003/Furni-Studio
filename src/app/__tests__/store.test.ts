@@ -67,4 +67,25 @@ describe('Zustand Global Store', () => {
     expect(useStore.getState().project.name).toBe('State 2');
     expect(useStore.getState().history.future.length).toBe(0);
   });
+
+  it('triggerCameraReset should increment cameraResetTrigger', () => {
+    const before = useStore.getState().cameraResetTrigger;
+    useStore.getState().triggerCameraReset();
+    expect(useStore.getState().cameraResetTrigger).toBe(before + 1);
+  });
+
+  it('setCurrentUser should update the currentUser state', () => {
+    const mockUser = { email: 'designer@furnihome.com', role: 'designer' as const, name: 'Test User' };
+    useStore.getState().setCurrentUser(mockUser);
+    expect(useStore.getState().currentUser).toEqual(mockUser);
+    useStore.getState().setCurrentUser(null);
+    expect(useStore.getState().currentUser).toBeNull();
+  });
+
+  it('setViewMode should toggle between 2d and 3d', () => {
+    useStore.getState().setViewMode('3d');
+    expect(useStore.getState().viewMode).toBe('3d');
+    useStore.getState().setViewMode('2d');
+    expect(useStore.getState().viewMode).toBe('2d');
+  });
 });
