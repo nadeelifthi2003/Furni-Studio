@@ -642,7 +642,7 @@ export function Visualization3D({ project, cameraResetTrigger, selectedItemId, o
                 normal.normalize();
                 dragPlaneRef.current.setFromNormalAndCoplanarPoint(normal, object.position);
                 
-                raycasterRef.current.intersectPlane(dragPlaneRef.current, dragOffsetRef.current);
+                raycasterRef.current.ray.intersectPlane(dragPlaneRef.current, dragOffsetRef.current);
                 dragOffsetRef.current.sub(object.position);
               } else {
                 const floorIntersects = raycasterRef.current.intersectObject(floorMeshRef.current);
@@ -669,7 +669,7 @@ export function Visualization3D({ project, cameraResetTrigger, selectedItemId, o
             
             if (isVerticalDragRef.current) {
               const intersectPoint = new THREE.Vector3();
-              raycasterRef.current.intersectPlane(dragPlaneRef.current, intersectPoint);
+              raycasterRef.current.ray.intersectPlane(dragPlaneRef.current, intersectPoint);
               if (intersectPoint) {
                 const newY = intersectPoint.y - dragOffsetRef.current.y;
                 draggedObjectRef.current.position.y = Math.max(0, newY); // allow floating, min floor
