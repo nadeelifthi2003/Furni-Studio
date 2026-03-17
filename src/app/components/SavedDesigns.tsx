@@ -19,16 +19,16 @@ interface SavedDesignsProps {
 
 import { ProjectService } from "../lib/db";
 
-const MOCK_PROJECTS: Project[] = [];
-
 export function SavedDesigns({ onEdit }: SavedDesignsProps) {
   const [search, setSearch] = useState("");
   const [savedProjects, setSavedProjects] = useState<Project[]>([]);
+  const [dataSource, setDataSource] = useState<'supabase' | 'localStorage'>('localStorage');
 
   React.useEffect(() => {
     const loadProjects = async () => {
-      const { projects } = await ProjectService.getProjects();
+      const { projects, source } = await ProjectService.getProjects();
       setSavedProjects(projects);
+      setDataSource(source);
     };
     loadProjects();
   }, []);
@@ -120,7 +120,11 @@ export function SavedDesigns({ onEdit }: SavedDesignsProps) {
                 </div>
                 <div className="text-[10px] text-gray-400 font-bold uppercase tracking-widest text-right">
                   Status
-                  <p className="text-green-600 text-xs mt-0.5 normal-case font-bold">Saved locally</p>
+                  {dataSource === 'supabase' ? (
+                    <p className="text-blue-600 text-xs mt-0.5 normal-case font-bold">☁️ Saved to Cloud</p>
+                  ) : (
+                    <p className="text-green-600 text-xs mt-0.5 normal-case font-bold">💾 Saved locally</p>
+                  )}
                 </div>
               </div>
             </div>

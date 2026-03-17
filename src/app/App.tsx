@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useCallback } from "react";
 import { Sidebar } from "./components/Sidebar";
 import { TopNav } from "./components/TopNav";
 import { Login } from "./components/Login";
@@ -18,6 +18,7 @@ import { AdminFurnitureManagement } from "./components/AdminFurnitureManagement"
 import { Toaster, toast } from "sonner";
 import { motion, AnimatePresence } from "motion/react";
 import { useStore } from "./store";
+import { ProjectService } from "./lib/db";
 
 // Types
 export type RoomShape = "Rectangle" | "L-shape" | "Custom";
@@ -75,23 +76,13 @@ export default function App() {
     cameraResetTrigger, triggerCameraReset
   } = useStore();
 
-  const handleSave = () => {
+  const handleSave = async () => {
     try {
       const projectToSave = { ...project, lastModified: new Date().toISOString() };
-      const stored = localStorage.getItem("furni_studio_projects");
-      const projects: Project[] = stored ? JSON.parse(stored) : [];
-
-      const existingIdx = projects.findIndex(p => p.id === projectToSave.id);
-      if (existingIdx >= 0) {
-        projects[existingIdx] = projectToSave;
-      } else {
-        projects.push(projectToSave);
-      }
-
-      localStorage.setItem("furni_studio_projects", JSON.stringify(projects));
-      setProject(projectToSave); // To update last modified without putting to history
-
-      toast.success("Design saved successfully!");
+      const { error, source } = await ProjectService.saveProject(projectToSave);
+      if (error) throw error;
+      setProject(projectToSave);
+      toast.success(source === 'supabase' ? '☁️ Design saved to cloud!' : '💾 Design saved locally!');
     } catch (err) {
       toast.error("Failed to save design");
     }
