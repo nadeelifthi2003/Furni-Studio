@@ -51,7 +51,8 @@ export function Visualization3D({ project, cameraResetTrigger, selectedItemId, o
     
     // Initialize Scene
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0xf3f4f6);
+    scene.background = new THREE.Color(0xdae6f0); // warm pale blue-sky
+    scene.fog = new THREE.Fog(0xdae6f0, 900, 3200); // soft depth fog
     sceneRef.current = scene;
 
     // Initialize Camera
@@ -79,12 +80,17 @@ export function Visualization3D({ project, cameraResetTrigger, selectedItemId, o
     controls.dampingFactor = 0.05;
     controlsRef.current = controls;
 
-    // Add Lights with default intensity (will be updated)
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+    // Hemisphere light — sky/ground bounce gives warm interior feel
+    const hemiLight = new THREE.HemisphereLight(0xfff4e0, 0x9a8060, 0.45);
+    scene.add(hemiLight);
+
+    // Ambient light
+    const ambientLight = new THREE.AmbientLight(0xfff8f0, 0.55);
     scene.add(ambientLight);
     ambientLightRef.current = ambientLight;
 
-    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+    // Main directional light (warm sunlight)
+    const directionalLight = new THREE.DirectionalLight(0xfff5e0, 0.9);
     directionalLight.position.set(500, 1000, 500);
     directionalLight.castShadow = true;
     directionalLight.shadow.mapSize.width = 2048;
@@ -103,8 +109,20 @@ export function Visualization3D({ project, cameraResetTrigger, selectedItemId, o
       );
 
       const { width, length, height, wallColor, shape } = project.roomConfig;
-      const wallMaterial = new THREE.MeshStandardMaterial({ color: wallColor, side: THREE.DoubleSide });
-      const floorMaterial = new THREE.MeshStandardMaterial({ color: wallColor, roughness: 0.8, metalness: 0.1 });
+      // Warm plaster wall — user wallColor tints the base warm off-white
+      const wallMaterial = new THREE.MeshStandardMaterial({
+        color: wallColor === '#f3f4f6' ? 0xf2ede6 : wallColor, // default → warm plaster
+        roughness: 0.92,
+        metalness: 0,
+        side: THREE.DoubleSide,
+      });
+      // Warm hardwood floor — independent of wall color picker
+      const floorMaterial = new THREE.MeshStandardMaterial({
+        color: 0xc4a882,
+        roughness: 0.82,
+        metalness: 0.0,
+      });
+      const skirtingMat = new THREE.MeshStandardMaterial({ color: 0xf0ebe2, roughness: 0.8 });
 
       if (shape === 'L-shape') {
         // L-shape: 6 vertices defining the floor polygon
@@ -128,9 +146,11 @@ export function Visualization3D({ project, cameraResetTrigger, selectedItemId, o
         scene.add(floor);
         floorMeshRef.current = floor;
 
-        // Grid helper
-        const grid = new THREE.GridHelper(Math.max(width, length), Math.max(width, length) / 20, 0xcccccc, 0xeeeeee);
-        grid.position.y = 0.1;
+        // Subtle floor line grid (very faint)
+        const grid = new THREE.GridHelper(Math.max(width, length), Math.max(width, length) / 40, 0xb8956a, 0xcfb48c);
+        grid.position.y = 0.5;
+        grid.material.opacity = 0.22;
+        (grid.material as THREE.Material).transparent = true;
         scene.add(grid);
 
         // Walls along L-shape edges
@@ -160,9 +180,11 @@ export function Visualization3D({ project, cameraResetTrigger, selectedItemId, o
         scene.add(floor);
         floorMeshRef.current = floor;
 
-        // Grid helper on floor
-        const grid = new THREE.GridHelper(Math.max(width, length), Math.max(width, length) / 20, 0xcccccc, 0xeeeeee);
-        grid.position.y = 0.1;
+        // Subtle floor plank grid (faint warm lines)
+        const grid = new THREE.GridHelper(Math.max(width, length), Math.max(width, length) / 40, 0xb8956a, 0xcfb48c);
+        grid.position.y = 0.5;
+        grid.material.opacity = 0.2;
+        (grid.material as THREE.Material).transparent = true;
         scene.add(grid);
 
         // Walls
@@ -181,11 +203,20 @@ export function Visualization3D({ project, cameraResetTrigger, selectedItemId, o
         leftWall.receiveShadow = true;
         scene.add(leftWall);
 
-        // Skirting board
-        const skirtingGeo = new THREE.BoxGeometry(width, 10, 2);
-        const skirting = new THREE.Mesh(skirtingGeo, new THREE.MeshStandardMaterial({ color: 0xdddddd }));
-        skirting.position.set(0, 5, -length / 2 + 1);
-        scene.add(skirting);
+        // Skirting board — back wall
+        const skirtingBackGeo = new THREE.BoxGeometry(width, 14, 3);
+        const skirtingBack = new THREE.Mesh(skirtingBackGeo, skirtingMat);
+        skirtingBack.position.set(0, 7, -length / 2 + 1.5);
+        skirtingBack.castShadow = true;
+        scene.add(skirtingBack);
+
+        // Skirting board — left wall
+        const skirtingLeftGeo = new THREE.BoxGeometry(length, 14, 3);
+        const skirtingLeft = new THREE.Mesh(skirtingLeftGeo, skirtingMat);
+        skirtingLeft.rotation.y = Math.PI / 2;
+        skirtingLeft.position.set(-width / 2 + 1.5, 7, 0);
+        skirtingLeft.castShadow = true;
+        scene.add(skirtingLeft);
       }
     };
 
