@@ -30,8 +30,8 @@ export function RoomSpecPanel({ config, onChange }: RoomSpecPanelProps) {
                 key={shape}
                 onClick={() => handleChange("shape", shape)}
                 className={`text-[10px] py-2 rounded-md border font-medium transition-all ${config.shape === shape
-                    ? "bg-blue-50 border-blue-600 text-blue-600"
-                    : "border-gray-200 text-gray-600 hover:border-gray-300"
+                  ? "bg-blue-50 border-blue-600 text-blue-600"
+                  : "border-gray-200 text-gray-600 hover:border-gray-300"
                   }`}
               >
                 {shape}
