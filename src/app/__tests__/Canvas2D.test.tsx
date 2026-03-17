@@ -70,12 +70,12 @@ describe('Canvas2D Component', () => {
         updateProject={updateProject}
       />
     );
-    expect(screen.getByText(/Drag furniture here/i)).toBeTruthy();
+    expect(screen.getByText(/Drag furniture from the library/i)).toBeTruthy();
   });
 
-  it('renders a furniture item with the correct alt text', () => {
+  it('renders a furniture item footprint (not a photo) when project.items has an entry', () => {
     const item = makeMockItem();
-    render(
+    const { container } = render(
       <Canvas2D
         project={makeMockProject([item])}
         selectedItemId={null}
@@ -83,14 +83,16 @@ describe('Canvas2D Component', () => {
         updateProject={updateProject}
       />
     );
-    expect(screen.getByAltText('Test Chair')).toBeTruthy();
+    // FurnitureFootprint renders an SVG — confirm SVG is present
+    const svgs = container.querySelectorAll('svg');
+    expect(svgs.length).toBeGreaterThan(0);
     // Empty state should NOT be shown when items exist
-    expect(screen.queryByText(/Drag furniture here/i)).toBeNull();
+    expect(screen.queryByText(/Drag furniture from the library/i)).toBeNull();
   });
 
-  it('calls onSelectItem with item id on mousedown on a furniture item', () => {
+  it('calls onSelectItem with item id on mousedown on a furniture item div', () => {
     const item = makeMockItem();
-    render(
+    const { container } = render(
       <Canvas2D
         project={makeMockProject([item])}
         selectedItemId={null}
@@ -98,9 +100,11 @@ describe('Canvas2D Component', () => {
         updateProject={updateProject}
       />
     );
-    const img = screen.getByAltText('Test Chair');
-    // Fire mousedown on the parent div (the draggable item wrapper)
-    fireEvent.mouseDown(img.parentElement!);
+    // The furniture item is the absolute-positioned div with cursor-move
+    // Find it by its style (position absolute with left/top set)
+    const itemDiv = container.querySelector('div[style*="position: absolute"][style*="cursor: move"]') as HTMLElement;
+    expect(itemDiv).toBeTruthy();
+    fireEvent.mouseDown(itemDiv!);
     expect(onSelectItem).toHaveBeenCalledWith('item-1');
   });
 
@@ -141,7 +145,7 @@ describe('Canvas2D Component', () => {
     expect(vertices.length).toBe(6);
   });
 
-  it('renders the Measure Tool button and toggles state on click', () => {
+  it('renders the Measure button and toggles state on click', () => {
     render(
       <Canvas2D
         project={makeMockProject([])}
@@ -150,11 +154,11 @@ describe('Canvas2D Component', () => {
         updateProject={updateProject}
       />
     );
-    const btn = screen.getByText(/Measure Tool/i);
+    const btn = screen.getByText(/^Measure$/i);
     expect(btn).toBeTruthy();
     fireEvent.click(btn);
-    expect(screen.getByText(/Exit Measurement/i)).toBeTruthy();
-    fireEvent.click(screen.getByText(/Exit Measurement/i));
-    expect(screen.getByText(/Measure Tool/i)).toBeTruthy();
+    expect(screen.getByText(/Exit Measure/i)).toBeTruthy();
+    fireEvent.click(screen.getByText(/Exit Measure/i));
+    expect(screen.getByText(/^Measure$/i)).toBeTruthy();
   });
 });
