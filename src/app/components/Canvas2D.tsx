@@ -1,6 +1,7 @@
 import React, { useRef, useState, useEffect } from "react";
 import { Project, FurnitureItem } from "../App";
 import { Move, Ruler } from "lucide-react";
+import { FurnitureFootprint } from "./FurnitureFootprint";
 
 interface Canvas2DProps {
   project: Project;
@@ -13,27 +14,41 @@ const GRID_SIZE = 20;
 
 // ---------------------------------------------------------------------------
 // Builds the SVG polygon points string for the room shape.
-// Rectangle: standard 4 corners.
-// L-shape: cuts out the top-right quadrant (matches 3D buildRoom logic).
 // ---------------------------------------------------------------------------
 function getRoomPolygonPoints(width: number, length: number, shape: string): string {
   if (shape === 'L-shape') {
     const hw = width / 2;
     const hl = length / 2;
-    // SVG coords: top-left origin, so we shift from centred to (0,0) origin
-    // L-shape: cut top-right quadrant → 6 vertices
-    // (0,0) top-left → (hw,0) → (hw,hl) → (width,hl) → (width,length) → (0,length)
-    return [
-      `0,0`,
-      `${hw},0`,
-      `${hw},${hl}`,
-      `${width},${hl}`,
-      `${width},${length}`,
-      `0,${length}`,
-    ].join(' ');
+    return [`0,0`, `${hw},0`, `${hw},${hl}`, `${width},${hl}`, `${width},${length}`, `0,${length}`].join(' ');
   }
-  // Rectangle
   return `0,0 ${width},0 ${width},${length} 0,${length}`;
+}
+
+// Corner bracket SVG for selection handles (Figma-style)
+function SelectionHandles({ w, h }: { w: number; h: number }) {
+  const s = Math.min(12, w * 0.1, h * 0.1); // bracket arm length
+  const t = 2.5; // stroke thickness
+  const offset = 5; // offset outside item bounds
+  const color = "#2563eb";
+  const corners = [
+    // top-left
+    [`M ${-offset + s},${-offset} L ${-offset},${-offset} L ${-offset},${-offset + s}`],
+    // top-right
+    [`M ${w + offset - s},${-offset} L ${w + offset},${-offset} L ${w + offset},${-offset + s}`],
+    // bottom-left
+    [`M ${-offset + s},${h + offset} L ${-offset},${h + offset} L ${-offset},${h + offset - s}`],
+    // bottom-right
+    [`M ${w + offset - s},${h + offset} L ${w + offset},${h + offset} L ${w + offset},${h + offset - s}`],
+  ];
+  return (
+    <svg
+      style={{ position: 'absolute', top: -offset, left: -offset, width: w + offset * 2, height: h + offset * 2, overflow: 'visible', pointerEvents: 'none', zIndex: 30 }}
+    >
+      {corners.map((d, i) => (
+        <path key={i} d={d[0]} stroke={color} strokeWidth={t} fill="none" strokeLinecap="round" />
+      ))}
+    </svg>
+  );
 }
 
 export function Canvas2D({ project, selectedItemId, onSelectItem, updateProject }: Canvas2DProps) {
@@ -41,23 +56,21 @@ export function Canvas2D({ project, selectedItemId, onSelectItem, updateProject 
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
 
-  // Measurement Tool State
   const [isMeasuring, setIsMeasuring] = useState(false);
   const [measurePoints, setMeasurePoints] = useState<{x: number, y: number}[]>([]);
   const [mousePos, setMousePos] = useState<{x: number, y: number} | null>(null);
 
-  const { width, length, shape, wallColor } = project.roomConfig;
+  const { width, length, shape } = project.roomConfig;
   const polygonPoints = getRoomPolygonPoints(width, length, shape);
   const clipId = `room-clip-${shape}`;
+  // Warm hardwood floor tone — independent from wall color picker
+  const FLOOR_COLOR = "#d9cbb8";
+  const FLOOR_PLANK = "#c9b89e";
 
-  // Add Keyboard Support for Deletion
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.key === "Delete" || e.key === "Backspace") && selectedItemId) {
-        updateProject({
-          ...project,
-          items: project.items.filter(item => item.id !== selectedItemId)
-        });
+        updateProject({ ...project, items: project.items.filter(item => item.id !== selectedItemId) });
         onSelectItem(null);
       }
     };
@@ -69,30 +82,23 @@ export function Canvas2D({ project, selectedItemId, onSelectItem, updateProject 
     e.preventDefault();
     const furnitureData = e.dataTransfer.getData("furniture");
     if (!furnitureData || !containerRef.current) return;
-
     const furniture = JSON.parse(furnitureData);
     const rect = containerRef.current.getBoundingClientRect();
-
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
-
-    const snappedX = Math.round(x / GRID_SIZE) * GRID_SIZE;
-    const snappedY = Math.round(y / GRID_SIZE) * GRID_SIZE;
-
     const newItem: FurnitureItem = {
       id: Math.random().toString(36).substr(2, 9),
       type: furniture.id,
       name: furniture.name,
-      x: snappedX - (furniture.dimensions.w / 2),
-      y: snappedY - (furniture.dimensions.l / 2),
+      x: Math.round((x - furniture.dimensions.w / 2) / GRID_SIZE) * GRID_SIZE,
+      y: Math.round((y - furniture.dimensions.l / 2) / GRID_SIZE) * GRID_SIZE,
       width: furniture.dimensions.w,
       length: furniture.dimensions.l,
       rotation: 0,
-      color: "#3b82f6",
+      color: "#7c9bb5",   // warm slate blue default (looks nicer in plan view)
       shading: 0.5,
       image: furniture.image,
     };
-
     updateProject({ ...project, items: [...project.items, newItem] });
     onSelectItem(newItem.id);
   };
@@ -118,12 +124,10 @@ export function Canvas2D({ project, selectedItemId, onSelectItem, updateProject 
     if (!isDragging || !selectedItemId) return;
     const newItems = project.items.map(item => {
       if (item.id === selectedItemId) {
-        const newX = e.clientX - dragOffset.x;
-        const newY = e.clientY - dragOffset.y;
         return {
           ...item,
-          x: Math.round(newX / GRID_SIZE) * GRID_SIZE,
-          y: Math.round(newY / GRID_SIZE) * GRID_SIZE,
+          x: Math.round((e.clientX - dragOffset.x) / GRID_SIZE) * GRID_SIZE,
+          y: Math.round((e.clientY - dragOffset.y) / GRID_SIZE) * GRID_SIZE,
         };
       }
       return item;
@@ -135,94 +139,83 @@ export function Canvas2D({ project, selectedItemId, onSelectItem, updateProject 
 
   return (
     <div
-      className="w-full h-full relative overflow-auto bg-gray-100 flex items-center justify-center p-20 cursor-crosshair"
+      className="w-full h-full relative overflow-auto flex items-center justify-center p-20 cursor-crosshair"
+      style={{ background: 'radial-gradient(ellipse at center, #e8e4df 0%, #d5d0cb 100%)' }}
       onDragOver={handleDragOver}
       onDrop={handleDrop}
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
       onClick={(e) => {
         if (isMeasuring && mousePos) {
-          if (measurePoints.length === 2) {
-            setMeasurePoints([mousePos]);
-          } else {
-            setMeasurePoints([...measurePoints, mousePos]);
-          }
+          measurePoints.length === 2 ? setMeasurePoints([mousePos]) : setMeasurePoints([...measurePoints, mousePos]);
         }
-        if (e.target === e.currentTarget && !isMeasuring) {
-          onSelectItem(null);
-        }
+        if (e.target === e.currentTarget && !isMeasuring) onSelectItem(null);
       }}
     >
-      {/* ------------------------------------------------------------------ */}
-      {/* Room container — sized to bounding box, shaped by SVG clipPath      */}
-      {/* ------------------------------------------------------------------ */}
+      {/* Room container */}
       <div
         ref={containerRef}
-        style={{
-          width: `${width}px`,
-          height: `${length}px`,
-          position: 'relative',
-          flexShrink: 0,
-        }}
+        style={{ width: `${width}px`, height: `${length}px`, position: 'relative', flexShrink: 0 }}
       >
-        {/* SVG layer: draws the room shape (background + border) */}
+        {/* SVG: floor fill + grid + border */}
         <svg
           width={width}
           height={length}
           style={{ position: 'absolute', inset: 0, overflow: 'visible', pointerEvents: 'none', zIndex: 0 }}
         >
           <defs>
-            {/* Grid pattern */}
-            <pattern id="room-grid" width={GRID_SIZE} height={GRID_SIZE} patternUnits="userSpaceOnUse">
-              <path d={`M ${GRID_SIZE} 0 L 0 0 0 ${GRID_SIZE}`} fill="none" stroke="#e5e7eb" strokeWidth="0.8" />
+            {/* Wood plank pattern — horizontal lines every 40px */}
+            <pattern id="floor-planks" width={width} height={40} patternUnits="userSpaceOnUse">
+              <rect width={width} height={40} fill={FLOOR_COLOR} />
+              <line x1={0} y1={0} x2={width} y2={0} stroke={FLOOR_PLANK} strokeWidth={1.2} />
+              <line x1={0} y1={20} x2={width} y2={20} stroke={FLOOR_PLANK} strokeWidth={0.5} strokeDasharray="none" opacity={0.5} />
             </pattern>
-            {/* Clip path matching the room polygon */}
+            {/* Dot grid overlay */}
+            <pattern id="dot-grid" width={GRID_SIZE} height={GRID_SIZE} patternUnits="userSpaceOnUse">
+              <circle cx={GRID_SIZE / 2} cy={GRID_SIZE / 2} r={0.9} fill="rgba(100,80,60,0.18)" />
+            </pattern>
             <clipPath id={clipId}>
               <polygon points={polygonPoints} />
             </clipPath>
           </defs>
 
-          {/* Room fill (wall colour) clipped to polygon */}
-          <polygon points={polygonPoints} fill={wallColor} />
-          {/* Grid fill clipped to polygon */}
-          <rect width={width} height={length} fill="url(#room-grid)" clipPath={`url(#${clipId})`} />
-          {/* Room border/outline */}
+          {/* Floor planks clipped to polygon */}
+          <rect width={width} height={length} fill="url(#floor-planks)" clipPath={`url(#${clipId})`} />
+          {/* Dot grid overlay */}
+          <rect width={width} height={length} fill="url(#dot-grid)" clipPath={`url(#${clipId})`} />
+          {/* Subtle inner shadow vignette */}
+          <polygon points={polygonPoints} fill="rgba(0,0,0,0.04)" />
+          {/* Room border */}
           <polygon
             points={polygonPoints}
             fill="none"
-            stroke="#ffffff"
-            strokeWidth="4"
-            filter="drop-shadow(0 0 12px rgba(0,0,0,0.12))"
+            stroke="#a89880"
+            strokeWidth="3"
+            filter="drop-shadow(0 4px 16px rgba(0,0,0,0.18))"
           />
-          {/* Inner vignette overlay */}
-          <polygon
-            points={polygonPoints}
-            fill="rgba(0,0,0,0.03)"
-          />
+          {/* Outer glow to lift room from canvas */}
+          <polygon points={polygonPoints} fill="none" stroke="rgba(255,255,255,0.7)" strokeWidth="1.5" />
         </svg>
 
-        {/* Room dimension labels */}
-        <div className="absolute -top-8 left-0 right-0 flex justify-center text-[10px] font-bold text-gray-400">
-          {width} cm
+        {/* Dimension labels */}
+        <div className="absolute -top-9 left-0 right-0 flex justify-center">
+          <span className="text-[10px] font-semibold text-stone-500 tracking-widest bg-white/60 backdrop-blur-sm px-2 py-0.5 rounded-full">
+            {width} cm
+          </span>
         </div>
-        <div className="absolute -left-12 top-0 bottom-0 flex items-center text-[10px] font-bold text-gray-400 [writing-mode:vertical-rl] rotate-180">
-          {length} cm
+        <div className="absolute -left-14 top-0 bottom-0 flex items-center">
+          <span className="text-[10px] font-semibold text-stone-500 tracking-widest bg-white/60 backdrop-blur-sm px-2 py-0.5 rounded-full [writing-mode:vertical-rl] rotate-180">
+            {length} cm
+          </span>
         </div>
 
-        {/* Furniture items — clipped to the same room polygon */}
-        <div
-          style={{
-            position: 'absolute',
-            inset: 0,
-            clipPath: `polygon(${polygonPoints.split(' ').join(', ')})`,
-          }}
-        >
-          {/* Dynamic Measurement Tool SVG overlay */}
+        {/* Furniture + measurement layer — clipped to room polygon */}
+        <div style={{ position: 'absolute', inset: 0, clipPath: `polygon(${polygonPoints.split(' ').join(', ')})` }}>
+
+          {/* Measurement overlay */}
           {isMeasuring && measurePoints.length > 0 && (
             <svg className="absolute inset-0 pointer-events-none w-full h-full z-20" style={{ overflow: 'visible' }}>
-              {measurePoints.map((pt, i) => (
-                <circle key={i} cx={pt.x} cy={pt.y} r={4} fill="#eab308" />
-              ))}
+              {measurePoints.map((pt, i) => <circle key={i} cx={pt.x} cy={pt.y} r={4} fill="#eab308" />)}
               {measurePoints.length === 1 && mousePos && (
                 <>
                   <line x1={measurePoints[0].x} y1={measurePoints[0].y} x2={mousePos.x} y2={mousePos.y} stroke="#eab308" strokeWidth={2} strokeDasharray="4 4" />
@@ -242,76 +235,96 @@ export function Canvas2D({ project, selectedItemId, onSelectItem, updateProject 
             </svg>
           )}
 
-          {project.items.map((item) => (
-            <div
-              key={item.id}
-              onMouseDown={(e) => handleItemMouseDown(e, item)}
-              className={`absolute cursor-move transition-shadow ${selectedItemId === item.id ? "ring-2 ring-blue-500 ring-offset-2 z-10 shadow-xl" : "hover:shadow-md"}`}
-              style={{
-                left: `${item.x}px`,
-                top: `${item.y}px`,
-                width: `${item.width}px`,
-                height: `${item.length}px`,
-                transform: `rotate(${item.rotation}deg)`,
-                backgroundColor: 'white',
-                borderRadius: '4px',
-                overflow: 'hidden',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                padding: '4px',
-              }}
-            >
-              <img
-                src={item.image}
-                alt={item.name}
-                className="w-full h-full object-contain pointer-events-none mix-blend-multiply"
-                style={{ filter: `drop-shadow(0 2px 4px rgba(0,0,0,0.1))` }}
-              />
-              {selectedItemId === item.id && (
-                <div className="absolute inset-0 border-2 border-blue-500 pointer-events-none">
-                  <div className="absolute -top-2 -left-2 w-4 h-4 bg-white border-2 border-blue-500 rounded-full"></div>
-                  <div className="absolute -top-2 -right-2 w-4 h-4 bg-white border-2 border-blue-500 rounded-full"></div>
-                  <div className="absolute -bottom-2 -left-2 w-4 h-4 bg-white border-2 border-blue-500 rounded-full"></div>
-                  <div className="absolute -bottom-2 -right-2 w-4 h-4 bg-white border-2 border-blue-500 rounded-full"></div>
-                </div>
-              )}
-            </div>
-          ))}
+          {/* Furniture items */}
+          {project.items.map((item) => {
+            const isSelected = selectedItemId === item.id;
+            return (
+              <div
+                key={item.id}
+                onMouseDown={(e) => handleItemMouseDown(e, item)}
+                style={{
+                  position: 'absolute',
+                  left: `${item.x}px`,
+                  top: `${item.y}px`,
+                  width: `${item.width}px`,
+                  height: `${item.length}px`,
+                  transform: `rotate(${item.rotation}deg)`,
+                  cursor: 'move',
+                  zIndex: isSelected ? 20 : 10,
+                  transformOrigin: 'center center',
+                }}
+              >
+                {/* SVG footprint */}
+                <FurnitureFootprint
+                  type={item.type}
+                  width={item.width}
+                  length={item.length}
+                  color={item.color}
+                  selected={isSelected}
+                />
 
-          {/* Empty State Prompt */}
+                {/* Selection: corner brackets + name badge */}
+                {isSelected && (
+                  <>
+                    <SelectionHandles w={item.width} h={item.length} />
+                    {/* Name label above item */}
+                    <div
+                      style={{
+                        position: 'absolute',
+                        top: -28,
+                        left: '50%',
+                        transform: 'translateX(-50%)',
+                        whiteSpace: 'nowrap',
+                        pointerEvents: 'none',
+                      }}
+                      className="bg-blue-600 text-white text-[9px] font-bold px-2 py-0.5 rounded-full shadow-lg shadow-blue-500/30"
+                    >
+                      {item.name}
+                    </div>
+                  </>
+                )}
+              </div>
+            );
+          })}
+
+          {/* Empty state */}
           {project.items.length === 0 && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-400 pointer-events-none">
-              <div className="p-4 bg-white/50 backdrop-blur-sm rounded-xl border border-dashed border-gray-300 flex flex-col items-center">
-                <Move size={24} className="mb-2 opacity-20" />
-                <p className="text-[10px] font-bold uppercase tracking-widest">Drag furniture here</p>
+            <div className="absolute inset-0 flex flex-col items-center justify-center text-stone-400 pointer-events-none">
+              <div className="p-5 bg-white/60 backdrop-blur-sm rounded-2xl border border-dashed border-stone-300 flex flex-col items-center gap-2 shadow-sm">
+                <Move size={24} className="opacity-30" />
+                <p className="text-[10px] font-bold uppercase tracking-widest">Drag furniture from the library</p>
               </div>
             </div>
           )}
         </div>
       </div>
 
-      {/* Viewport Info Overlay */}
-      <div className="absolute bottom-6 left-6 flex items-center gap-4 bg-white/90 backdrop-blur-sm px-4 py-2 rounded-full border border-gray-200 shadow-sm text-[10px] font-bold text-gray-500">
-        <span className="flex items-center gap-1.5"><div className="w-2 h-2 bg-blue-500 rounded-full"></div> SNAP ENABLED</span>
-        <span className="w-px h-3 bg-gray-200"></span>
-        <span>GRID: {GRID_SIZE}cm</span>
-        <span className="w-px h-3 bg-gray-200"></span>
-        <span>SHAPE: {shape.toUpperCase()}</span>
+      {/* Bottom status bar */}
+      <div className="absolute bottom-6 left-6 flex items-center gap-3 bg-white/80 backdrop-blur-md px-4 py-2 rounded-full border border-stone-200 shadow text-[10px] font-semibold text-stone-500">
+        <span className="flex items-center gap-1.5">
+          <span className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" />
+          SNAP
+        </span>
+        <span className="w-px h-3 bg-stone-200" />
+        <span>GRID {GRID_SIZE}cm</span>
+        <span className="w-px h-3 bg-stone-200" />
+        <span>{shape.toUpperCase()}</span>
+        <span className="w-px h-3 bg-stone-200" />
+        <span>{project.items.length} item{project.items.length !== 1 ? 's' : ''}</span>
       </div>
 
-      {/* Measurement Tool Toggle */}
+      {/* Measure tool toggle */}
       <div className="absolute top-6 right-6">
         <button
           onClick={() => { setIsMeasuring(!isMeasuring); setMeasurePoints([]); }}
-          className={`flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold shadow-sm transition-colors border ${
+          className={`flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold shadow-sm transition-all border ${
             isMeasuring
-              ? 'bg-yellow-500 text-white border-yellow-600 shadow-yellow-500/20'
-              : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
+              ? 'bg-amber-500 text-white border-amber-600 shadow-amber-400/30'
+              : 'bg-white/90 text-stone-600 border-stone-200 hover:bg-white hover:shadow-md'
           }`}
         >
-          <Ruler size={16} />
-          {isMeasuring ? 'Exit Measurement' : 'Measure Tool'}
+          <Ruler size={14} />
+          {isMeasuring ? 'Exit Measure' : 'Measure'}
         </button>
       </div>
     </div>
