@@ -19,6 +19,7 @@ import { Toaster, toast } from "sonner";
 import { motion, AnimatePresence } from "motion/react";
 import { useStore } from "./store";
 import { ProjectService } from "./lib/db";
+import { BookOpen, PanelRight } from "lucide-react";
 
 // Types
 export type RoomShape = "Rectangle" | "L-shape" | "Custom";
@@ -75,6 +76,11 @@ export default function App() {
     history, undo, redo,
     cameraResetTrigger, triggerCameraReset
   } = useStore();
+
+  // Responsive panel state
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isLeftPanelOpen, setIsLeftPanelOpen] = useState(false);
+  const [isRightPanelOpen, setIsRightPanelOpen] = useState(false);
 
   const handleSave = async () => {
     try {
@@ -181,8 +187,15 @@ export default function App() {
   }
 
   return (
-    <div className="flex h-screen bg-gray-50 overflow-hidden font-sans text-gray-900">
-      <Sidebar userRole={currentUser.role} activeTab={activeTab} setActiveTab={setActiveTab} onLogout={() => setCurrentUser(null)} />
+    <div className="flex h-screen h-dvh bg-gray-50 overflow-hidden font-sans text-gray-900">
+      <Sidebar
+        userRole={currentUser.role}
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        onLogout={() => setCurrentUser(null)}
+        isOpen={isSidebarOpen}
+        onClose={() => setIsSidebarOpen(false)}
+      />
 
       <div className="flex flex-col flex-1 overflow-hidden">
         {!activeTab.startsWith('admin-') && activeTab !== 'settings' && (
@@ -197,6 +210,7 @@ export default function App() {
             canRedo={history.future.length > 0}
             onExportJSON={handleExportJSON}
             onExportImage={handleExportImage}
+            onMenuClick={() => setIsSidebarOpen(true)}
           />
         )}
 
@@ -255,8 +269,13 @@ export default function App() {
                 exit={{ opacity: 0 }}
                 className="flex h-full"
               >
-                {/* Left Panel: Library & Spec */}
-                <div className="w-80 border-r border-gray-200 bg-white flex flex-col">
+                {/* Left Panel: Library & Spec — drawer on mobile, fixed column on lg+ */}
+                <div className={`
+                  fixed inset-y-0 left-0 z-40 w-80 border-r border-gray-200 bg-white flex flex-col
+                  transform transition-transform duration-300 ease-in-out
+                  lg:relative lg:translate-x-0 lg:z-auto lg:flex-shrink-0
+                  ${isLeftPanelOpen ? 'translate-x-0' : '-translate-x-full'}
+                `}>
                   <div className="h-1/2 overflow-y-auto border-b border-gray-200">
                     <RoomSpecPanel
                       config={project.roomConfig}
@@ -295,8 +314,13 @@ export default function App() {
                   )}
                 </div>
 
-                {/* Right Panel: Properties */}
-                <div className="w-80 border-l border-gray-200 bg-white overflow-y-auto">
+                {/* Right Panel: Properties — drawer on mobile, fixed column on lg+ */}
+                <div className={`
+                  fixed inset-y-0 right-0 z-40 w-80 border-l border-gray-200 bg-white overflow-y-auto
+                  transform transition-transform duration-300 ease-in-out
+                  lg:relative lg:translate-x-0 lg:z-auto lg:flex-shrink-0
+                  ${isRightPanelOpen ? 'translate-x-0' : 'translate-x-full'}
+                `}>
                   <PropertiesPanel
                     selectedItem={project.items.find(i => i.id === selectedItemId) || null}
                     roomConfig={project.roomConfig}
@@ -320,6 +344,24 @@ export default function App() {
                       setSelectedItemId(newItem.id);
                     }}
                   />
+                </div>
+
+                {/* Mobile Floating Action Buttons */}
+                <div className="fixed bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-3 z-50 lg:hidden">
+                  <button
+                    onClick={() => { setIsLeftPanelOpen(v => !v); setIsRightPanelOpen(false); }}
+                    className="flex items-center gap-2 bg-gray-900 text-white px-4 py-2.5 rounded-full text-xs font-bold shadow-xl shadow-black/20"
+                  >
+                    <BookOpen size={14} />
+                    Library
+                  </button>
+                  <button
+                    onClick={() => { setIsRightPanelOpen(v => !v); setIsLeftPanelOpen(false); }}
+                    className="flex items-center gap-2 bg-gray-900 text-white px-4 py-2.5 rounded-full text-xs font-bold shadow-xl shadow-black/20"
+                  >
+                    <PanelRight size={14} />
+                    Properties
+                  </button>
                 </div>
               </motion.div>
             )}
